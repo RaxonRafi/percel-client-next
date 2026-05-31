@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Syne } from 'next/font/google';
 import './globals.css';
+import { ChatWidget } from '@/components/chat-widget';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${dmSans.variable} ${syne.variable} antialiased`}>
         {children}
+        <ChatWidget />
       </body>
     </html>
   );

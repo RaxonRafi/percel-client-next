@@ -150,6 +150,16 @@ export const api = {
 
   blockParcel: (trackingId: string) =>
     request<Parcel>(`/parcels/${trackingId}/block`, { method: 'PATCH' }),
+
+  askRag: (question: string, filter: string = 'parcel') =>
+    request<{
+      answer: string;
+      sources: Array<{ type: string; source: string; page: number | null }>;
+    }>('/rag/ask', {
+      method: 'POST',
+      body: { question, filter },
+      auth: false,
+    }),
 };
 
 export async function refreshAccessToken(): Promise<string | null> {
