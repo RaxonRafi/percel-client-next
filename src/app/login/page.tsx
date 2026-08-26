@@ -35,11 +35,11 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
       <Card className="w-full max-w-md">
-        <Link href="/" className="font-display mb-6 block text-xl font-extrabold">
-          Swift<span className="text-accent">Parcel</span>
+        <Link href="/" className="font-display mb-8 block text-2xl font-extrabold text-ink">
+          Parcel <span className="text-accent">Payout</span>
         </Link>
-        <h1 className="font-display mb-2 text-2xl font-bold">Sign in</h1>
-        <p className="mb-6 text-sm text-ink-3">Use your SwiftParcel account</p>
+        <h1 className="font-display mb-2 text-3xl font-bold">Welcome back</h1>
+        <p className="mb-6 text-sm text-ink-3">Use your Parcel Payout account</p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>

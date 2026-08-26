@@ -32,7 +32,7 @@ export function ChatWidget() {
     {
       id: 'welcome',
       role: 'assistant',
-      content: "Hello! I am SwiftParcel's AI Assistant. How can I help you today? You can ask me about our shipping policies, tracking guidelines, or claim procedures.",
+      content: "Hello! I am Parcel Payout's AI Assistant. How can I help you today? You can ask me about our shipping policies, tracking guidelines, or claim procedures.",
       timestamp: new Date(),
     },
   ]);
@@ -194,7 +194,7 @@ export function ChatWidget() {
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-display text-sm font-bold tracking-wide">SwiftParcel Copilot</h3>
+              <h3 className="font-display text-sm font-bold tracking-wide">Parcel Payout Copilot</h3>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>

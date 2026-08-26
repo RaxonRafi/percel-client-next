@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import type { Parcel } from '@/lib/types';
@@ -12,31 +13,45 @@ import { Badge } from '@/components/ui/badge';
 import { parcelStatusVariant } from '@/lib/parcel-utils';
 
 export default function TrackPage() {
-  const [trackingId, setTrackingId] = useState('');
+  const searchParams = useSearchParams();
+  const initialId = searchParams.get('id') || '';
+  
+  const [trackingId, setTrackingId] = useState(initialId);
   const [parcel, setParcel] = useState<Parcel | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleTrack(e: React.FormEvent) {
-    e.preventDefault();
+  const performTrack = async (idToTrack: string) => {
+    if (!idToTrack.trim()) return;
     setError('');
     setParcel(null);
     setLoading(true);
     try {
-      const data = await api.getParcel(trackingId.trim());
+      const data = await api.getParcel(idToTrack.trim());
       setParcel(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Parcel not found');
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (initialId) {
+      performTrack(initialId);
+    }
+  }, [initialId]);
+
+  async function handleTrack(e: React.FormEvent) {
+    e.preventDefault();
+    performTrack(trackingId);
   }
 
   return (
     <div className="min-h-screen bg-surface px-4 py-16">
       <div className="mx-auto max-w-lg">
         <Link href="/" className="font-display mb-8 block text-xl font-extrabold">
-          Swift<span className="text-accent">Parcel</span>
+          Parcel <span className="text-accent">Payout</span>
         </Link>
         <Card>
           <h1 className="font-display mb-4 text-2xl font-bold">Track a package</h1>

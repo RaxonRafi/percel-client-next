@@ -39,7 +39,7 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
       <Card className="w-full max-w-md">
         <Link href="/" className="font-display mb-6 block text-xl font-extrabold">
-          Swift<span className="text-accent">Parcel</span>
+          Parcel <span className="text-accent">Payout</span>
         </Link>
         <h1 className="font-display mb-2 text-2xl font-bold">Create account</h1>
         <p className="mb-6 text-sm text-ink-3">Register as a sender</p>

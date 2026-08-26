@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { DM_Sans, Syne } from 'next/font/google';
 import './globals.css';
+import './swiftparcel.css';
 import { ChatWidget } from '@/components/chat-widget';
 
 const dmSans = DM_Sans({
@@ -14,7 +15,7 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = {
-  title: 'SwiftParcel — Delivery Platform',
+  title: 'Parcel Payout — Claims Platform',
   description: 'Deliver faster, track smarter',
 };
 
