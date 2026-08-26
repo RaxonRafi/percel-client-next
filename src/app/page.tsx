@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { 
-  IconBox, IconArrowRight, IconCircleCheck, IconClock, 
+  IconCircleCheck, IconClock, 
   IconCurrencyDollar, IconShieldCheck, IconReceipt, IconBuildingStore,
-  IconDots, IconLayoutDashboard, IconPackage
+  IconPackage
 } from '@tabler/icons-react';
 
 export default function LandingPage() {

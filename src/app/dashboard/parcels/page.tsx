@@ -43,6 +43,7 @@ export default function ParcelsPage() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     load();
   }, [user?.role]);

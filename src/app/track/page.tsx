@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
@@ -12,7 +12,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { parcelStatusVariant } from '@/lib/parcel-utils';
 
-export default function TrackPage() {
+function TrackContent() {
   const searchParams = useSearchParams();
   const initialId = searchParams.get('id') || '';
   
@@ -48,6 +48,41 @@ export default function TrackPage() {
   }
 
   return (
+    <>
+      <form onSubmit={handleTrack} className="flex gap-2">
+        <Input
+          placeholder="Enter tracking ID (e.g. TRK-...)"
+          value={trackingId}
+          onChange={(e) => setTrackingId(e.target.value)}
+          required
+        />
+        <Button type="submit" disabled={loading}>
+          <Search className="h-4 w-4" />
+        </Button>
+      </form>
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {parcel && (
+        <div className="mt-6 space-y-3 border-t border-surface-2 pt-6">
+          <div className="flex justify-between">
+            <span className="font-semibold">{parcel.trackingId}</span>
+            <Badge variant={parcelStatusVariant(parcel.status)}>
+              {parcel.status.replace('_', ' ')}
+            </Badge>
+          </div>
+          <p className="text-sm text-ink-2">
+            {parcel.pickupAddress} → {parcel.deliveryAddress}
+          </p>
+          <p className="text-sm">
+            Sender: {parcel.senderName} · Receiver: {parcel.receiverName}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function TrackPage() {
+  return (
     <div className="min-h-screen bg-surface px-4 py-16">
       <div className="mx-auto max-w-lg">
         <Link href="/" className="font-display mb-8 block text-xl font-extrabold">
@@ -55,34 +90,9 @@ export default function TrackPage() {
         </Link>
         <Card>
           <h1 className="font-display mb-4 text-2xl font-bold">Track a package</h1>
-          <form onSubmit={handleTrack} className="flex gap-2">
-            <Input
-              placeholder="Enter tracking ID (e.g. TRK-...)"
-              value={trackingId}
-              onChange={(e) => setTrackingId(e.target.value)}
-              required
-            />
-            <Button type="submit" disabled={loading}>
-              <Search className="h-4 w-4" />
-            </Button>
-          </form>
-          {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-          {parcel && (
-            <div className="mt-6 space-y-3 border-t border-surface-2 pt-6">
-              <div className="flex justify-between">
-                <span className="font-semibold">{parcel.trackingId}</span>
-                <Badge variant={parcelStatusVariant(parcel.status)}>
-                  {parcel.status.replace('_', ' ')}
-                </Badge>
-              </div>
-              <p className="text-sm text-ink-2">
-                {parcel.pickupAddress} → {parcel.deliveryAddress}
-              </p>
-              <p className="text-sm">
-                Sender: {parcel.senderName} · Receiver: {parcel.receiverName}
-              </p>
-            </div>
-          )}
+          <Suspense fallback={<div className="text-sm text-ink-3">Loading tracker...</div>}>
+            <TrackContent />
+          </Suspense>
         </Card>
       </div>
     </div>
