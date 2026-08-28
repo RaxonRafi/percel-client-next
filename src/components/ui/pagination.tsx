@@ -22,11 +22,11 @@ export function Pagination({
   const last = Math.min(meta.page * meta.limit, meta.total);
 
   return (
-    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-surface-2 pt-4">
-      <p className="text-xs text-ink-3">
-        {first}–{last} of {meta.total}
+    <div className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800/60 pt-4">
+      <p className="text-[11px] font-mono text-slate-500 uppercase tracking-wider">
+        {first}–{last} <span className="text-slate-600">of</span> <span className="text-slate-300 font-bold">{meta.total}</span>
       </p>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <Button
           size="sm"
           variant="secondary"
@@ -35,8 +35,8 @@ export function Pagination({
         >
           Previous
         </Button>
-        <span className="text-xs text-ink-3">
-          Page {meta.page} of {meta.totalPages}
+        <span className="text-[11px] font-mono text-slate-500 uppercase tracking-wider">
+          Page <span className="text-slate-300 font-bold">{meta.page}</span> <span className="text-slate-600">of</span> {meta.totalPages}
         </span>
         <Button
           size="sm"

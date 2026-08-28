@@ -119,88 +119,110 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const visible = (item: NavItem) => !item.roles || item.roles.includes(user.role);
 
   return (
-    <div id="app" style={{ display: 'block' }}>
-      <div className="app-layout">
+    <div id="app" className="min-h-screen bg-slate-950 text-slate-300 font-sans text-sm selection:bg-cyan-500/30 selection:text-cyan-100 flex">
+      {/* Fixed Narrow Sidebar */}
+      <aside className="w-60 bg-slate-950 border-r border-slate-800/60 flex flex-col flex-shrink-0 h-screen sticky top-0 z-50">
+        <Link href="/dashboard" className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-3 hover:bg-slate-900/50 transition-colors">
+          <div className="w-8 h-8 rounded bg-slate-900 border border-slate-700/50 flex items-center justify-center text-cyan-400">
+            <IconPackage size={18} />
+          </div>
+          <div className="font-display font-bold text-slate-200 tracking-wide text-base">
+            Parcel<span className="text-cyan-500">Payout</span>
+          </div>
+        </Link>
 
-        {/* Sidebar */}
-        <aside className="sidebar">
-          <Link href="/dashboard" className="sidebar-brand">
-            <div className="sidebar-brand-icon"><IconPackage size={18} color="var(--white)" /></div>
-            Parcel<span>Payout</span>
-          </Link>
-          <nav className="sidebar-nav">
-            {SECTIONS.map((section) => {
-              const items = section.items.filter(visible);
-              if (items.length === 0) return null;
-              return (
-                <React.Fragment key={section.label}>
-                  <div className="nav-section-label">{section.label}</div>
-                  {items.map((item) => (
+        <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1 custom-scrollbar">
+          {SECTIONS.map((section) => {
+            const items = section.items.filter(visible);
+            if (items.length === 0) return null;
+            return (
+              <React.Fragment key={section.label}>
+                <div className="text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase mt-4 mb-2 px-2">
+                  {section.label}
+                </div>
+                {items.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`nav-item ${pathname === item.href ? 'active' : ''}`}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-[13px] font-medium border border-transparent ${
+                        isActive
+                          ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                          : 'text-slate-400 hover:bg-slate-900/80 hover:text-slate-200'
+                      }`}
                     >
-                      <item.icon size={20} /> {item.label}
+                      <item.icon size={18} className={isActive ? 'text-cyan-400' : 'text-slate-500'} /> 
+                      {item.label}
                     </Link>
-                  ))}
-                </React.Fragment>
-              );
-            })}
-          </nav>
-
-          <div className="sidebar-footer">
-            <div className="sidebar-user">
-              <div className="user-avatar">{initials(user.name)}</div>
-              <div>
-                <div className="user-name">{user.name}</div>
-                <div className="user-role">
-                  {user.role.charAt(0) + user.role.slice(1).toLowerCase().replace('_', ' ')}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                title="Sign out"
-                style={{
-                  marginLeft: 'auto', background: 'none', border: 'none',
-                  cursor: 'pointer', color: 'rgba(255,255,255,0.4)', display: 'flex',
-                }}
-              >
-                <IconLogout size={16} />
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <div className="main-content">
-          <div className="topbar">
-            <div>
-              <div className="topbar-title">{TITLES[pathname] ?? 'Dashboard'}</div>
-              <div style={{ fontSize: '12px', color: 'var(--ink3)', marginTop: '1px' }}>
-                {new Date().toLocaleDateString('en-US', {
-                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                  );
                 })}
-              </div>
-            </div>
-            <div className="topbar-right">
-              <div className="search-box">
-                <IconSearch size={18} /> Search packages, drivers...
-              </div>
-              <div className="topbar-icon-btn notif-dot">
-                <IconBell size={18} />
-              </div>
-              <Link href="/" className="btn-primary" style={{ padding: '8px 18px', fontSize: '13px' }}>
-                <IconArrowLeft size={16} /> Back to site
-              </Link>
-            </div>
-          </div>
+              </React.Fragment>
+            );
+          })}
+        </nav>
 
-          <div className="dash-body">
-            {children}
+        <div className="p-4 border-t border-slate-800/60 bg-slate-950">
+          <div className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-900/80 transition-colors cursor-pointer border border-transparent hover:border-slate-800">
+            <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+              {initials(user.name)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold text-slate-200 truncate">{user.name}</div>
+              <div className="text-[11px] text-slate-500 truncate">
+                {user.role.charAt(0) + user.role.slice(1).toLowerCase().replace('_', ' ')}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Sign out"
+              className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+            >
+              <IconLogout size={16} />
+            </button>
           </div>
         </div>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-14 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 sticky top-0 z-40 flex items-center justify-between px-6">
+          <div>
+            <div className="text-sm font-bold text-slate-200">{TITLES[pathname] ?? 'Dashboard'}</div>
+            <div className="text-[11px] text-slate-500 font-mono tracking-wider">
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+              }).toUpperCase()}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="relative group">
+              <IconSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-500 transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search resources..." 
+                className="w-64 h-8 bg-slate-900 border border-slate-800 rounded-md pl-9 pr-3 text-[13px] text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono"
+              />
+            </div>
+            
+            <div className="h-4 w-px bg-slate-800" />
+            
+            <button className="relative text-slate-500 hover:text-slate-300 transition-colors">
+              <IconBell size={18} />
+              <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-cyan-500 border border-slate-950" />
+            </button>
+            
+            <Link href="/" className="h-8 px-3 flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-[12px] font-medium text-slate-300 transition-colors">
+              <IconArrowLeft size={14} /> Site
+            </Link>
+          </div>
+        </header>
+
+        <main className="flex-1 p-6 overflow-x-hidden">
+          {children}
+        </main>
       </div>
     </div>
   );

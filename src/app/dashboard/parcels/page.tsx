@@ -1,10 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { DeliveryProofForm } from '@/components/delivery-proof-form';
 import { api, ApiError } from '@/lib/api';
@@ -17,11 +14,9 @@ import {
   type User,
 } from '@/lib/types';
 import {
-  allowedTransitions, formatDate, formatMoney, formatStatus, isTerminal, statusPillClass,
+  allowedTransitions, formatDate, formatMoney, formatStatus, isTerminal,
 } from '@/lib/parcel-utils';
-
-const SELECT_CLASS =
-  'flex h-11 w-full rounded-md border border-surface-3 bg-white px-3 text-sm';
+import { Package, Plus, Search, ChevronRight, ChevronDown } from 'lucide-react';
 
 const EMPTY_FORM = {
   receiverId: '',
@@ -54,10 +49,8 @@ export default function ParcelsPage() {
     search: '',
     status: '',
   });
-  /** Receivers read two separate lists; this picks which one is paginated. */
   const [tab, setTab] = useState<'incoming' | 'history'>('incoming');
 
-  // Keyed on the role string so a new user object identity cannot refire this.
   const role = user?.role;
 
   const load = useCallback(async () => {
@@ -73,7 +66,6 @@ export default function ParcelsPage() {
       if (role === 'ADMIN') {
         const [all, everyone, activeCouriers] = await Promise.all([
           api.getAllParcels(query),
-          // Only receivers and couriers are needed for the pickers below.
           api.getAllUsers({ role: 'RECEIVER', limit: 100 }),
           api.getCouriers({ limit: 100 }),
         ]);
@@ -102,13 +94,11 @@ export default function ParcelsPage() {
     load();
   }, [load]);
 
-  /** Any filter change invalidates the current page number. */
   function applyFilter(next: Partial<typeof filters>) {
     setFilters({ ...filters, ...next });
     setPage(1);
   }
 
-  /** Runs a mutation, surfaces its error, and reloads on success. */
   async function run(action: () => Promise<unknown>, success: string) {
     setError('');
     setMsg('');
@@ -135,7 +125,6 @@ export default function ParcelsPage() {
           deliveryAddress: form.deliveryAddress,
           receiverPhone: form.receiverPhone || undefined,
           description: form.description || undefined,
-          // The fee is derived from weight server-side; we never send a price.
           weightKg: Number(form.weightKg),
           codAmount: form.codAmount ? Number(form.codAmount) : undefined,
         }),
@@ -148,442 +137,503 @@ export default function ParcelsPage() {
   const receivers = users.filter((u) => u.role === 'RECEIVER');
 
   return (
-    <div className="space-y-6">
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {msg && <p className="text-sm text-green">{msg}</p>}
-
-      {canCreate && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Create parcel</CardTitle>
-          </CardHeader>
-          <form onSubmit={createParcel} className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label>Receiver</Label>
-              {receivers.length > 0 ? (
-                <select
-                  className={SELECT_CLASS}
-                  value={form.receiverId}
-                  onChange={(e) => {
-                    const u = receivers.find((x) => x.id === e.target.value);
-                    setForm({
-                      ...form,
-                      receiverId: e.target.value,
-                      receiverName: u?.name ?? '',
-                      receiverPhone: u?.phone ?? '',
-                    });
-                  }}
-                  required
-                >
-                  <option value="">Select receiver</option>
-                  {receivers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.email})
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Input
-                  placeholder="Receiver UUID"
-                  value={form.receiverId}
-                  onChange={(e) => setForm({ ...form, receiverId: e.target.value })}
-                  required
-                />
-              )}
-            </div>
-            <div>
-              <Label>Receiver name</Label>
-              <Input
-                value={form.receiverName}
-                onChange={(e) => setForm({ ...form, receiverName: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label>Receiver phone</Label>
-              <Input
-                value={form.receiverPhone}
-                onChange={(e) => setForm({ ...form, receiverPhone: e.target.value })}
-                placeholder="Optional"
-              />
-            </div>
-            <div>
-              <Label>Description</Label>
-              <Input
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Optional"
-              />
-            </div>
-            <div>
-              <Label>Pickup address</Label>
-              <Input
-                value={form.pickupAddress}
-                onChange={(e) => setForm({ ...form, pickupAddress: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label>Delivery address</Label>
-              <Input
-                value={form.deliveryAddress}
-                onChange={(e) => setForm({ ...form, deliveryAddress: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label>Weight (kg)</Label>
-              <Input
-                type="number"
-                min="0.1"
-                step="0.1"
-                value={form.weightKg}
-                onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label>Cash on delivery</Label>
-              <Input
-                type="number"
-                min="0"
-                step="1"
-                value={form.codAmount}
-                onChange={(e) => setForm({ ...form, codAmount: e.target.value })}
-                placeholder="0 — prepaid"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Button type="submit" disabled={busy}>Create shipment</Button>
-              <p className="mt-3 text-xs text-ink-3">
-                The delivery fee is calculated from the weight and any COD amount when
-                the parcel is created. A receiver without an account is emailed a link
-                to claim one.
-              </p>
-            </div>
-          </form>
-        </Card>
+    <div className="space-y-6 animate-fade-in relative">
+      {(error || msg) && (
+        <div className={`p-3 rounded-lg border text-sm font-mono ${error ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+          {error || msg}
+        </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-200 flex items-center gap-2">
+            <Package className="h-5 w-5 text-cyan-500" />
+            Parcel Management
+          </h1>
+          <p className="text-slate-500 text-[13px] mt-1 font-mono tracking-wide">
             {user?.role === 'ADMIN'
-              ? 'All shipments'
+              ? 'SYSTEM FLEET OVERVIEW'
               : user?.role === 'SENDER'
-                ? 'My shipments'
+                ? 'MY OUTBOUND SHIPMENTS'
                 : tab === 'incoming'
-                  ? 'Incoming parcels'
-                  : 'Delivery history'}
-          </CardTitle>
-          {user?.role === 'RECEIVER' && (
-            // The two receiver lists are separate routes, so they page apart.
-            <div className="flex gap-2">
-              {(['incoming', 'history'] as const).map((t) => (
-                <Button
-                  key={t}
-                  size="sm"
-                  variant={tab === t ? 'default' : 'secondary'}
-                  onClick={() => {
-                    setTab(t);
-                    setPage(1);
-                  }}
-                >
-                  {t === 'incoming' ? 'Incoming' : 'History'}
-                </Button>
-              ))}
-            </div>
-          )}
-        </CardHeader>
-
-        <div className="mb-4 flex flex-wrap gap-3">
-          <Input
-            className="max-w-xs"
-            placeholder="Search tracking id or name…"
-            value={filters.search}
-            onChange={(e) => applyFilter({ search: e.target.value })}
-          />
-          <select
-            className="h-11 rounded-md border border-surface-3 bg-white px-3 text-sm"
-            value={filters.status}
-            onChange={(e) => applyFilter({ status: e.target.value })}
-          >
-            <option value="">All statuses</option>
-            {PARCEL_STATUSES.map((s) => (
-              <option key={s} value={s}>{formatStatus(s)}</option>
-            ))}
-          </select>
+                  ? 'INCOMING PARCELS'
+                  : 'DELIVERY HISTORY'}
+          </p>
         </div>
+        
+        {user?.role === 'RECEIVER' && (
+          <div className="flex bg-slate-900 p-1 rounded-md border border-slate-800">
+            {(['incoming', 'history'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => { setTab(t); setPage(1); }}
+                className={`px-3 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded transition-all cursor-pointer ${
+                  tab === t 
+                    ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" 
+                    : "text-slate-500 hover:text-slate-300 hover:bg-slate-800 border border-transparent"
+                }`}
+              >
+                {t === 'incoming' ? 'Incoming' : 'History'}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-surface-2 text-xs uppercase text-ink-3">
-                <th className="pb-3 text-left">Tracking</th>
-                <th className="pb-3 text-left">From → To</th>
-                <th className="pb-3 text-left">Status</th>
-                {user?.role === 'ADMIN' && <th className="pb-3 text-left">Courier</th>}
-                <th className="pb-3 text-left">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {parcels.map((p) => {
-                const draft = statusDraft[p.id] ?? { status: p.status, note: '' };
-                const isOpen = expanded === p.id;
-                return (
-                  <tr key={p.id} className="border-b border-surface-2 align-top">
-                    <td className="py-3 font-medium">
-                      <button
-                        type="button"
-                        className="text-left hover:text-accent"
-                        onClick={() => setExpanded(isOpen ? null : p.id)}
-                      >
-                        {p.trackingId}
-                      </button>
-                      {isOpen && (
-                        <div className="mt-3 space-y-2 text-xs font-normal text-ink-3">
-                          <p>Sender: {p.senderName}{p.senderPhone ? ` · ${p.senderPhone}` : ''}</p>
-                          <p>Receiver: {p.receiverName}{p.receiverPhone ? ` · ${p.receiverPhone}` : ''}</p>
-                          <p>
-                            Courier:{' '}
-                            {p.deliveryPersonnel
-                              ? `${p.deliveryPersonnel.name}${p.deliveryPersonnel.phone ? ` · ${p.deliveryPersonnel.phone}` : ''}`
-                              : 'Not assigned yet'}
-                          </p>
-                          <p>
-                            {p.weightKg} kg · Fee {formatMoney(p.deliveryFee)} ·{' '}
-                            {p.codAmount > 0
-                              ? `COD ${formatMoney(p.codAmount)}${p.isCodCollected ? ' (collected)' : ' (outstanding)'}`
-                              : 'Prepaid'}
-                          </p>
-                          {p.deliveredAt && (
-                            <p>
-                              Delivered {formatDate(p.deliveredAt)}
-                              {p.receivedBy ? ` — received by ${p.receivedBy}` : ''}
-                            </p>
-                          )}
-                          {p.deliveryProofNote && <p>Proof note: {p.deliveryProofNote}</p>}
-                          {p.deliveryProofImages?.length > 0 && (
-                            <p className="flex flex-wrap gap-2">
-                              {p.deliveryProofImages.map((src, i) => (
-                                <a
-                                  key={src}
-                                  href={src}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-accent hover:underline"
-                                >
-                                  Proof {i + 1}
-                                </a>
-                              ))}
-                            </p>
-                          )}
-                          {p.description && <p>Note: {p.description}</p>}
-                          <p className="pt-1 font-medium text-ink-2">Status history</p>
-                          {(p.statusLogs ?? []).map((log) => (
-                            <p key={log.id}>
-                              {formatDate(log.createdAt)} — {formatStatus(log.status)}
-                              {/* null once the author's account has been deleted */}
-                              {log.changedBy ? ` by ${log.changedBy.name}` : ''}
-                              {log.note ? ` (${log.note})` : ''}
-                            </p>
-                          ))}
-                          {(p.statusLogs ?? []).length === 0 && <p>No status history.</p>}
-                          {user?.role === 'ADMIN' && (
-                            <div className="flex flex-wrap gap-2 pt-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                disabled={busy}
-                                onClick={() => run(() => api.indexParcel(p.id), 'Parcel indexed for AI search')}
-                              >
-                                Index for AI search
-                              </Button>
-                              {allowedTransitions(p.status).includes('DELIVERED') && (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  disabled={busy}
-                                  onClick={() => setProofFor(proofFor?.id === p.id ? null : p)}
-                                >
-                                  Record delivery proof
-                                </Button>
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className={`space-y-6 ${canCreate ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+          <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col">
+            <div className="p-4 border-b border-slate-800/60 bg-slate-900/50 flex flex-wrap gap-3">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input
+                  className="w-full h-9 rounded border border-slate-800 bg-slate-950 pl-9 pr-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600 font-mono"
+                  placeholder="SEARCH TRACKING ID..."
+                  value={filters.search}
+                  onChange={(e) => applyFilter({ search: e.target.value })}
+                />
+              </div>
+              <select
+                className="h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none font-mono"
+                value={filters.status}
+                onChange={(e) => applyFilter({ status: e.target.value })}
+              >
+                <option value="">ALL STATUSES</option>
+                {PARCEL_STATUSES.map((s) => (
+                  <option key={s} value={s}>{formatStatus(s).toUpperCase()}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-[13px] text-left">
+                <thead className="bg-slate-900/50 text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-800/60">
+                  <tr>
+                    <th className="px-5 py-3 font-semibold">Tracking</th>
+                    <th className="px-5 py-3 font-semibold">Route</th>
+                    <th className="px-5 py-3 font-semibold">Status</th>
+                    {user?.role === 'ADMIN' && <th className="px-5 py-3 font-semibold">Assignment</th>}
+                    <th className="px-5 py-3 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono">
+                  {parcels.map((p) => {
+                    const draft = statusDraft[p.id] ?? { status: p.status, note: '' };
+                    const isOpen = expanded === p.id;
+                    return (
+                      <tr key={p.id} className="hover:bg-slate-800/20 transition-colors group align-top">
+                        <td className="px-5 py-3">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1.5 font-bold text-cyan-400 font-mono hover:text-cyan-300 transition-colors"
+                            onClick={() => setExpanded(isOpen ? null : p.id)}
+                          >
+                            {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            {p.trackingId}
+                          </button>
+                          
+                          {isOpen && (
+                            <div className="mt-3 space-y-2 text-[11px] font-sans text-slate-400 bg-slate-950 p-3 rounded border border-slate-800/60 ml-5">
+                              <p><span className="text-slate-500 font-mono uppercase tracking-wider">Sender:</span> {p.senderName}{p.senderPhone ? ` · ${p.senderPhone}` : ''}</p>
+                              <p><span className="text-slate-500 font-mono uppercase tracking-wider">Receiver:</span> {p.receiverName}{p.receiverPhone ? ` · ${p.receiverPhone}` : ''}</p>
+                              <p>
+                                <span className="text-slate-500 font-mono uppercase tracking-wider">Courier:</span>{' '}
+                                {p.deliveryPersonnel
+                                  ? <span className="text-amber-400">{`${p.deliveryPersonnel.name}${p.deliveryPersonnel.phone ? ` · ${p.deliveryPersonnel.phone}` : ''}`}</span>
+                                  : 'Not assigned yet'}
+                              </p>
+                              <p>
+                                <span className="text-slate-500 font-mono uppercase tracking-wider">Details:</span> {p.weightKg} kg · Fee {formatMoney(p.deliveryFee)} ·{' '}
+                                {p.codAmount > 0
+                                  ? <span className="text-emerald-400 font-mono font-bold">COD {formatMoney(p.codAmount)}{p.isCodCollected ? ' (Collected)' : ' (Outstanding)'}</span>
+                                  : 'Prepaid'}
+                              </p>
+                              {p.deliveredAt && (
+                                <p>
+                                  <span className="text-slate-500 font-mono uppercase tracking-wider">Delivered:</span> {formatDate(p.deliveredAt)}
+                                  {p.receivedBy ? ` — received by ${p.receivedBy}` : ''}
+                                </p>
+                              )}
+                              {p.deliveryProofNote && <p><span className="text-slate-500 font-mono uppercase tracking-wider">Proof note:</span> {p.deliveryProofNote}</p>}
+                              {p.deliveryProofImages?.length > 0 && (
+                                <p className="flex flex-wrap gap-2 mt-1">
+                                  {p.deliveryProofImages.map((src, i) => (
+                                    <a
+                                      key={src}
+                                      href={src}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-2 py-1 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded hover:bg-cyan-500/20 transition-colors"
+                                    >
+                                      Proof {i + 1}
+                                    </a>
+                                  ))}
+                                </p>
+                              )}
+                              {p.description && <p><span className="text-slate-500 font-mono uppercase tracking-wider">Note:</span> {p.description}</p>}
+                              
+                              <div className="mt-3 pt-2 border-t border-slate-800">
+                                <p className="font-bold text-slate-300 font-mono uppercase tracking-wider mb-2 text-[10px]">Status History</p>
+                                {(p.statusLogs ?? []).map((log) => (
+                                  <p key={log.id} className="mb-1 text-slate-400">
+                                    <span className="text-slate-500">{formatDate(log.createdAt).split(',')[0]}</span> — <span className="text-cyan-400">{formatStatus(log.status)}</span>
+                                    {log.changedBy ? ` by ${log.changedBy.name}` : ''}
+                                    {log.note ? ` (${log.note})` : ''}
+                                  </p>
+                                ))}
+                                {(p.statusLogs ?? []).length === 0 && <p className="text-slate-500 italic">No status history.</p>}
+                              </div>
+                              
+                              {user?.role === 'ADMIN' && (
+                                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-800">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={busy}
+                                    onClick={() => run(() => api.indexParcel(p.id), 'Parcel indexed for AI search')}
+                                  >
+                                    Index for AI search
+                                  </Button>
+                                  {allowedTransitions(p.status).includes('DELIVERED') && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      disabled={busy}
+                                      onClick={() => setProofFor(proofFor?.id === p.id ? null : p)}
+                                    >
+                                      Record delivery proof
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {proofFor?.id === p.id && (
+                                <DeliveryProofForm
+                                  parcel={p}
+                                  onCancel={() => setProofFor(null)}
+                                  onDone={async (message) => {
+                                    setProofFor(null);
+                                    setMsg(message);
+                                    await load();
+                                  }}
+                                />
                               )}
                             </div>
                           )}
-                          {proofFor?.id === p.id && (
-                            <DeliveryProofForm
-                              parcel={p}
-                              onCancel={() => setProofFor(null)}
-                              onDone={async (message) => {
-                                setProofFor(null);
-                                setMsg(message);
-                                await load();
-                              }}
-                            />
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-3 text-ink-3">
-                      {p.pickupAddress} → {p.deliveryAddress}
-                    </td>
-                    <td className="py-3">
-                      <span className={statusPillClass(p.status)}>{formatStatus(p.status)}</span>
-                      {p.isBlocked && (
-                        <span className="status-pill s-failed ml-1">Blocked</span>
-                      )}
-                    </td>
-                    {user?.role === 'ADMIN' && (
-                      <td className="py-3">
-                        <div className="flex flex-col gap-1">
-                          <select
-                            className="h-9 rounded-md border border-surface-3 bg-white px-2 text-xs"
-                            value={assignDraft[p.id] ?? p.deliveryPersonnel?.id ?? ''}
-                            onChange={(e) =>
-                              setAssignDraft({ ...assignDraft, [p.id]: e.target.value })
-                            }
-                          >
-                            <option value="">Unassigned</option>
-                            {/* Assignment is refused for anything but an approved,
-                                active courier. */}
-                            {couriers
-                              .filter((c) => c.isActive === 'ACTIVE')
-                              .map((c) => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                          </select>
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={
-                                busy ||
-                                !assignDraft[p.id] ||
-                                assignDraft[p.id] === p.deliveryPersonnel?.id
-                              }
-                              onClick={() =>
-                                run(
-                                  () => api.assignParcel(p.trackingId, assignDraft[p.id]),
-                                  'Courier assigned',
-                                )
-                              }
-                            >
-                              {p.deliveryPersonnel ? 'Reassign' : 'Assign'}
-                            </Button>
-                            {p.deliveryPersonnel && (
+                        </td>
+                        <td className="px-5 py-3 text-slate-400 text-xs">
+                          <div className="flex flex-col gap-1 max-w-[150px]">
+                            <div className="truncate" title={p.pickupAddress}>
+                              <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">F:</span>
+                              {p.pickupAddress}
+                            </div>
+                            <div className="truncate" title={p.deliveryAddress}>
+                              <span className="text-[10px] text-slate-500 uppercase tracking-wider mr-1">T:</span>
+                              {p.deliveryAddress}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border ${
+                              p.status === 'DELIVERED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                              ['PENDING', 'ACCEPTED'].includes(p.status) ? 'bg-slate-800 text-slate-300 border-slate-700' :
+                              p.status === 'CANCELLED' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                              'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                            }`}>
+                              {formatStatus(p.status)}
+                            </span>
+                            {p.isBlocked && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-rose-500/10 text-rose-500 border border-rose-500/20">Blocked</span>
+                            )}
+                          </div>
+                        </td>
+                        
+                        {user?.role === 'ADMIN' && (
+                          <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-col gap-2">
+                              <select
+                                className="h-8 rounded border border-slate-800 bg-slate-950 px-2 text-[11px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none w-32"
+                                value={assignDraft[p.id] ?? p.deliveryPersonnel?.id ?? ''}
+                                onChange={(e) =>
+                                  setAssignDraft({ ...assignDraft, [p.id]: e.target.value })
+                                }
+                              >
+                                <option value="">Unassigned</option>
+                                {couriers
+                                  .filter((c) => c.isActive === 'ACTIVE')
+                                  .map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                  ))}
+                              </select>
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 text-[10px]"
+                                  disabled={
+                                    busy ||
+                                    !assignDraft[p.id] ||
+                                    assignDraft[p.id] === p.deliveryPersonnel?.id
+                                  }
+                                  onClick={() =>
+                                    run(
+                                      () => api.assignParcel(p.trackingId, assignDraft[p.id]),
+                                      'Courier assigned',
+                                    )
+                                  }
+                                >
+                                  {p.deliveryPersonnel ? 'Reassign' : 'Assign'}
+                                </Button>
+                                {p.deliveryPersonnel && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-[10px] text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
+                                    disabled={busy}
+                                    onClick={() =>
+                                      run(() => api.unassignParcel(p.trackingId), 'Courier removed')
+                                    }
+                                  >
+                                    Clear
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        )}
+                        
+                        <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-col items-end gap-2">
+                            {user?.role === 'SENDER' && !isTerminal(p.status) && (
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                className="h-8 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10"
                                 disabled={busy}
-                                onClick={() =>
-                                  run(() => api.unassignParcel(p.trackingId), 'Courier removed')
-                                }
+                                onClick={() => run(() => api.cancelParcel(p.trackingId), 'Parcel cancelled')}
                               >
-                                Clear
+                                Cancel
                               </Button>
                             )}
+                            {user?.role === 'RECEIVER' && !isTerminal(p.status) && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={busy}
+                                onClick={() => run(() => api.confirmParcel(p.trackingId), 'Delivery confirmed')}
+                              >
+                                Confirm delivery
+                              </Button>
+                            )}
+                            {user?.role === 'ADMIN' && (
+                              <div className="flex flex-col gap-2 w-48">
+                                <select
+                                  className="h-8 rounded border border-slate-800 bg-slate-950 px-2 text-[11px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none w-full"
+                                  value={draft.status}
+                                  disabled={isTerminal(p.status)}
+                                  onChange={(e) =>
+                                    setStatusDraft({
+                                      ...statusDraft,
+                                      [p.id]: { ...draft, status: e.target.value as ParcelStatus },
+                                    })
+                                  }
+                                >
+                                  <option value={p.status}>{formatStatus(p.status)}</option>
+                                  {allowedTransitions(p.status).map((s) => (
+                                    <option key={s} value={s}>{formatStatus(s)}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  className="h-8 rounded border border-slate-800 bg-slate-950 px-2 text-[11px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none w-full placeholder:text-slate-600"
+                                  placeholder="Status Note (optional)"
+                                  value={draft.note}
+                                  onChange={(e) =>
+                                    setStatusDraft({
+                                      ...statusDraft,
+                                      [p.id]: { ...draft, note: e.target.value },
+                                    })
+                                  }
+                                />
+                                <div className="flex gap-1 justify-end">
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    className="h-7 text-[10px]"
+                                    disabled={busy || draft.status === p.status}
+                                    onClick={() =>
+                                      run(
+                                        () => api.updateParcelStatus(p.trackingId, draft.status, draft.note || undefined),
+                                        'Status updated',
+                                      )
+                                    }
+                                  >
+                                    Update
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className={`h-7 text-[10px] ${p.isBlocked ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-rose-500 hover:bg-rose-500/10'}`}
+                                    disabled={busy}
+                                    onClick={() =>
+                                      run(
+                                        () => api.blockParcel(p.trackingId),
+                                        p.isBlocked ? 'Parcel unblocked' : 'Parcel blocked',
+                                      )
+                                    }
+                                  >
+                                    {p.isBlocked ? 'Unblock' : 'Block'}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {parcels.length === 0 && (
+                    <tr>
+                      <td colSpan={user?.role === 'ADMIN' ? 5 : 4} className="px-5 py-8 text-center text-slate-500 text-sm font-sans">
+                        No parcels to show.
                       </td>
-                    )}
-                    <td className="py-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {/* CANCELLED is reachable from any non-terminal state. */}
-                        {user?.role === 'SENDER' && !isTerminal(p.status) && (
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={busy}
-                            onClick={() => run(() => api.cancelParcel(p.trackingId), 'Parcel cancelled')}
-                          >
-                            Cancel
-                          </Button>
-                        )}
-                        {user?.role === 'RECEIVER' && !isTerminal(p.status) && (
-                          <Button
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => run(() => api.confirmParcel(p.trackingId), 'Delivery confirmed')}
-                          >
-                            Confirm delivery
-                          </Button>
-                        )}
-                        {user?.role === 'ADMIN' && (
-                          <>
-                            {/* Only the moves the state machine accepts. */}
-                            <select
-                              className="h-9 rounded-md border border-surface-3 bg-white px-2 text-xs"
-                              value={draft.status}
-                              disabled={isTerminal(p.status)}
-                              onChange={(e) =>
-                                setStatusDraft({
-                                  ...statusDraft,
-                                  [p.id]: { ...draft, status: e.target.value as ParcelStatus },
-                                })
-                              }
-                            >
-                              <option value={p.status}>{formatStatus(p.status)}</option>
-                              {allowedTransitions(p.status).map((s) => (
-                                <option key={s} value={s}>{formatStatus(s)}</option>
-                              ))}
-                            </select>
-                            <input
-                              className="h-9 w-32 rounded-md border border-surface-3 px-2 text-xs"
-                              placeholder="Note (optional)"
-                              value={draft.note}
-                              onChange={(e) =>
-                                setStatusDraft({
-                                  ...statusDraft,
-                                  [p.id]: { ...draft, note: e.target.value },
-                                })
-                              }
-                            />
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              disabled={busy || draft.status === p.status}
-                              onClick={() =>
-                                run(
-                                  () => api.updateParcelStatus(p.trackingId, draft.status, draft.note || undefined),
-                                  'Status updated',
-                                )
-                              }
-                            >
-                              Update
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={busy}
-                              onClick={() =>
-                                run(
-                                  () => api.blockParcel(p.trackingId),
-                                  p.isBlocked ? 'Parcel unblocked' : 'Parcel blocked',
-                                )
-                              }
-                            >
-                              {p.isBlocked ? 'Unblock' : 'Block'}
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {parcels.length === 0 && (
-                <tr>
-                  <td colSpan={user?.role === 'ADMIN' ? 5 : 4} className="py-6 text-center text-ink-3">
-                    No parcels to show.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-4 border-t border-slate-800/60">
+              <Pagination meta={meta} onPage={setPage} busy={busy} />
+            </div>
+          </div>
         </div>
-        <Pagination meta={meta} onPage={setPage} busy={busy} />
-      </Card>
+
+        {canCreate && (
+          <div className="space-y-6">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col">
+              <div className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-2">
+                <Plus className="h-4 w-4 text-cyan-500" />
+                <h2 className="text-[13px] font-bold uppercase tracking-wider text-slate-300">Create Parcel</h2>
+              </div>
+              <form onSubmit={createParcel} className="p-5 flex flex-col gap-4 font-mono text-sm">
+                <div>
+                  <label className="block text-[10px] font-bold tracking-wider text-slate-500 mb-1.5 uppercase">Receiver</label>
+                  {receivers.length > 0 ? (
+                    <select
+                      className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none"
+                      value={form.receiverId}
+                      onChange={(e) => {
+                        const u = receivers.find((x) => x.id === e.target.value);
+                        setForm({
+                          ...form,
+                          receiverId: e.target.value,
+                          receiverName: u?.name ?? '',
+                          receiverPhone: u?.phone ?? '',
+                        });
+                      }}
+                      required
+                    >
+                      <option value="">SELECT RECEIVER</option>
+                      {receivers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600"
+                      placeholder="Receiver UUID"
+                      value={form.receiverId}
+                      onChange={(e) => setForm({ ...form, receiverId: e.target.value })}
+                      required
+                    />
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold tracking-wider text-slate-500 mb-1.5 uppercase">Receiver Name</label>
+                  <input
+                    className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600"
+                    value={form.receiverName}
+                    onChange={(e) => setForm({ ...form, receiverName: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold tracking-wider text-slate-500 mb-1.5 uppercase">Receiver Phone</label>
+                  <input
+                    className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600"
+                    value={form.receiverPhone}
+                    onChange={(e) => setForm({ ...form, receiverPhone: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold tracking-wider text-slate-500 mb-1.5 uppercase">Description</label>
+                  <input
+                    className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600"
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold tracking-wider text-slate-500 mb-1.5 uppercase">Pickup Address</label>
+                  <input
+                    className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600"
+                    value={form.pickupAddress}
+                    onChange={(e) => setForm({ ...form, pickupAddress: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold tracking-wider text-slate-500 mb-1.5 uppercase">Delivery Address</label>
+                  <input
+                    className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600"
+                    value={form.deliveryAddress}
+                    onChange={(e) => setForm({ ...form, deliveryAddress: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold tracking-wider text-slate-500 mb-1.5 uppercase">Weight (kg)</label>
+                    <input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600"
+                      value={form.weightKg}
+                      onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold tracking-wider text-slate-500 mb-1.5 uppercase">COD ($)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      className="w-full h-9 rounded border border-slate-800 bg-slate-950 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600"
+                      value={form.codAmount}
+                      onChange={(e) => setForm({ ...form, codAmount: e.target.value })}
+                      placeholder="0 (Prepaid)"
+                    />
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <Button type="submit" disabled={busy} className="w-full">Create Shipment</Button>
+                  <p className="mt-4 text-[10px] text-slate-500 leading-relaxed font-sans">
+                    The delivery fee is calculated from the weight and any COD amount when
+                    the parcel is created. A receiver without an account is emailed a link
+                    to claim one.
+                  </p>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
