@@ -33,9 +33,11 @@ export default function ParcelsPage() {
   const { user } = useAuth();
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [couriers, setCouriers] = useState<User[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<Record<string, { status: ParcelStatus; note: string }>>({});
+  const [assignDraft, setAssignDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,12 +47,14 @@ export default function ParcelsPage() {
     setError('');
     try {
       if (user.role === 'ADMIN') {
-        const [all, everyone] = await Promise.all([
+        const [all, everyone, activeCouriers] = await Promise.all([
           api.getAllParcels(),
           api.getAllUsers(),
+          api.getCouriers(),
         ]);
         setParcels(all);
         setUsers(everyone);
+        setCouriers(activeCouriers);
       } else if (user.role === 'SENDER') {
         setParcels(await api.getMyParcels());
       } else {
@@ -211,6 +215,7 @@ export default function ParcelsPage() {
                 <th className="pb-3 text-left">Tracking</th>
                 <th className="pb-3 text-left">From → To</th>
                 <th className="pb-3 text-left">Status</th>
+                {user?.role === 'ADMIN' && <th className="pb-3 text-left">Courier</th>}
                 <th className="pb-3 text-left">Actions</th>
               </tr>
             </thead>
@@ -232,12 +237,18 @@ export default function ParcelsPage() {
                         <div className="mt-3 space-y-2 text-xs font-normal text-ink-3">
                           <p>Sender: {p.senderName}{p.senderPhone ? ` · ${p.senderPhone}` : ''}</p>
                           <p>Receiver: {p.receiverName}{p.receiverPhone ? ` · ${p.receiverPhone}` : ''}</p>
+                          <p>
+                            Courier:{' '}
+                            {p.deliveryPersonnel
+                              ? `${p.deliveryPersonnel.name}${p.deliveryPersonnel.phone ? ` · ${p.deliveryPersonnel.phone}` : ''}`
+                              : 'Not assigned yet'}
+                          </p>
                           {p.description && <p>Note: {p.description}</p>}
                           <p className="pt-1 font-medium text-ink-2">Status history</p>
                           {(p.statusLogs ?? []).map((log) => (
                             <p key={log.id}>
                               {formatDate(log.createdAt)} — {formatStatus(log.status)}
-                              {/* changedBy is omitted on incoming-parcels and delivery-history */}
+                              {/* null once the author's account has been deleted */}
                               {log.changedBy ? ` by ${log.changedBy.name}` : ''}
                               {log.note ? ` (${log.note})` : ''}
                             </p>
@@ -265,6 +276,59 @@ export default function ParcelsPage() {
                         <span className="status-pill s-failed ml-1">Blocked</span>
                       )}
                     </td>
+                    {user?.role === 'ADMIN' && (
+                      <td className="py-3">
+                        <div className="flex flex-col gap-1">
+                          <select
+                            className="h-9 rounded-md border border-surface-3 bg-white px-2 text-xs"
+                            value={assignDraft[p.id] ?? p.deliveryPersonnel?.id ?? ''}
+                            onChange={(e) =>
+                              setAssignDraft({ ...assignDraft, [p.id]: e.target.value })
+                            }
+                          >
+                            <option value="">Unassigned</option>
+                            {/* Assignment is refused for anything but an approved,
+                                active courier. */}
+                            {couriers
+                              .filter((c) => c.isActive === 'ACTIVE')
+                              .map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                          </select>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={
+                                busy ||
+                                !assignDraft[p.id] ||
+                                assignDraft[p.id] === p.deliveryPersonnel?.id
+                              }
+                              onClick={() =>
+                                run(
+                                  () => api.assignParcel(p.trackingId, assignDraft[p.id]),
+                                  'Courier assigned',
+                                )
+                              }
+                            >
+                              {p.deliveryPersonnel ? 'Reassign' : 'Assign'}
+                            </Button>
+                            {p.deliveryPersonnel && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busy}
+                                onClick={() =>
+                                  run(() => api.unassignParcel(p.trackingId), 'Courier removed')
+                                }
+                              >
+                                Clear
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                    )}
                     <td className="py-3">
                       <div className="flex flex-wrap items-center gap-2">
                         {user?.role === 'SENDER' && p.status === 'PENDING' && (
@@ -348,7 +412,7 @@ export default function ParcelsPage() {
               })}
               {parcels.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-ink-3">
+                  <td colSpan={user?.role === 'ADMIN' ? 5 : 4} className="py-6 text-center text-ink-3">
                     No parcels to show.
                   </td>
                 </tr>

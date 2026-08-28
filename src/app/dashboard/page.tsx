@@ -66,13 +66,20 @@ export default function DashboardPage() {
         } else if (user.role === 'SENDER') {
           const mine = await api.getMyParcels();
           if (!cancelled) setParcels(mine);
-        } else {
+        } else if (user.role === 'RECEIVER') {
           const [incoming, history] = await Promise.all([
             api.getIncomingParcels(),
             api.getDeliveryHistory(),
           ]);
           if (!cancelled) setParcels(mergeParcels(incoming, history));
+        } else if (user.role === 'DELIVERY_PERSONNEL') {
+          const [queue, done] = await Promise.all([
+            api.getAssignedParcels(),
+            api.getCompletedDeliveries(),
+          ]);
+          if (!cancelled) setParcels(mergeParcels(queue, done));
         }
+        // PENDING_DELIVERY has no readable parcel route — nothing to fetch.
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load dashboard');
       }
@@ -93,6 +100,25 @@ export default function DashboardPage() {
   const totalParcels = stats?.totalParcels ?? parcels.length;
   const statusTotal = Object.values(byStatus).reduce((a, b) => a + b, 0) || 1;
   const recent = parcels.slice(0, 6);
+
+  if (user?.role === 'PENDING_DELIVERY') {
+    return (
+      <div className="sp-card">
+        <div className="card-header">
+          <div className="card-title">Application under review</div>
+        </div>
+        <p style={{ fontSize: 14, color: 'var(--ink2)', lineHeight: 1.7 }}>
+          Your delivery partner application is waiting on an admin. You can sign in and
+          keep your profile up to date, but deliveries stay locked until it is approved.
+          If it is turned down, the account becomes a normal sender account and you can
+          apply again.
+        </p>
+        <Link href="/dashboard/profile" className="view-all-link" style={{ display: 'inline-block', marginTop: 16 }}>
+          Update my profile →
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -173,7 +199,12 @@ export default function DashboardPage() {
       <div className="sp-card">
         <div className="card-header">
           <div className="card-title">Recent shipments</div>
-          <Link href="/dashboard/parcels" className="view-all-link">View all →</Link>
+          <Link
+            href={user?.role === 'DELIVERY_PERSONNEL' ? '/dashboard/deliveries' : '/dashboard/parcels'}
+            className="view-all-link"
+          >
+            View all →
+          </Link>
         </div>
         <table className="shipments-table">
           <thead>

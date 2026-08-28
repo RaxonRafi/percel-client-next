@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   IconPackage, IconLayoutDashboard, IconPackages,
   IconUsers, IconChartBar, IconUser, IconRobot,
-  IconLogout, IconSearch, IconBell, IconArrowLeft,
+  IconTruckDelivery, IconLogout, IconSearch, IconBell, IconArrowLeft,
 } from '@tabler/icons-react';
 import { logout } from '@/lib/api';
 import { useAuth } from '@/lib/use-auth';
@@ -25,13 +25,27 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
     label: 'Main',
     items: [
       { label: 'Overview', href: '/dashboard', icon: IconLayoutDashboard },
-      { label: 'Shipments', href: '/dashboard/parcels', icon: IconPackages },
+      {
+        label: 'Shipments',
+        href: '/dashboard/parcels',
+        icon: IconPackages,
+        // PENDING_DELIVERY is barred from every role-guarded route until an
+        // admin approves the application.
+        roles: ['ADMIN', 'SENDER', 'RECEIVER'],
+      },
+      {
+        label: 'My deliveries',
+        href: '/dashboard/deliveries',
+        icon: IconTruckDelivery,
+        roles: ['DELIVERY_PERSONNEL'],
+      },
     ],
   },
   {
     label: 'Management',
     items: [
       { label: 'Customers', href: '/dashboard/users', icon: IconUsers, roles: ['ADMIN'] },
+      { label: 'Couriers', href: '/dashboard/couriers', icon: IconTruckDelivery, roles: ['ADMIN'] },
       { label: 'Analytics', href: '/dashboard/analytics', icon: IconChartBar, roles: ['ADMIN'] },
       { label: 'AI knowledge', href: '/dashboard/knowledge', icon: IconRobot, roles: ['ADMIN'] },
     ],
@@ -45,7 +59,9 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
 const TITLES: Record<string, string> = {
   '/dashboard': 'Overview',
   '/dashboard/parcels': 'Shipments',
+  '/dashboard/deliveries': 'My deliveries',
   '/dashboard/users': 'Customers',
+  '/dashboard/couriers': 'Delivery partners',
   '/dashboard/analytics': 'Analytics',
   '/dashboard/knowledge': 'AI knowledge base',
   '/dashboard/profile': 'Profile',

@@ -24,6 +24,17 @@ export const PARCEL_STATUSES: ParcelStatus[] = [
   'CANCELLED',
 ];
 
+/**
+ * A courier may only move a parcel through these four. An admin may set
+ * anything; anything else from a courier is a 403.
+ */
+export const COURIER_STATUSES: ParcelStatus[] = [
+  'PICKED_UP',
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+  'DELIVERED',
+];
+
 export interface AuthProvider {
   id: string;
   provider: 'google' | 'credentials';
@@ -67,11 +78,8 @@ export interface ParcelStatusLog {
   id: string;
   status: ParcelStatus;
   note: string | null;
-  /**
-   * Populated on my-parcels, GET /parcels and the single-parcel routes, but
-   * omitted on incoming-parcels and delivery-history — always guard before use.
-   */
-  changedBy?: User | null;
+  /** Loaded on every authenticated parcel route; null if the author was deleted. */
+  changedBy: User | null;
   createdAt: string;
 }
 
@@ -89,9 +97,39 @@ export interface Parcel {
   isBlocked: boolean;
   sender: User;
   receiver: User;
+  /** The assigned courier, or null while the parcel is unassigned. */
+  deliveryPersonnel: User | null;
   statusLogs: ParcelStatusLog[];
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * What the public tracking route returns — an allow-list, not a `Parcel`.
+ * No nested user records, no internal id, no phone numbers, and the courier is
+ * reduced to a first name. Anything the dashboard shows beyond this needs an
+ * authenticated route.
+ */
+export interface PublicParcel {
+  trackingId: string;
+  status: ParcelStatus;
+  isBlocked: boolean;
+  senderName: string;
+  receiverName: string;
+  pickupAddress: string;
+  deliveryAddress: string;
+  description: string | null;
+  deliveryPersonnelName: string | null;
+  statusLogs: PublicParcelStatusLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The public timeline carries no log `id` and no `changedBy`. */
+export interface PublicParcelStatusLog {
+  status: ParcelStatus;
+  note: string | null;
+  createdAt: string;
 }
 
 export interface RagSource {

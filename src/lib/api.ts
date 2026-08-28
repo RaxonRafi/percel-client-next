@@ -12,6 +12,7 @@ import type {
   MessageResponse,
   Parcel,
   ParcelStatus,
+  PublicParcel,
   RagAnswer,
   Role,
   User,
@@ -37,26 +38,6 @@ type RequestOptions = {
   /** the response is plain text, not JSON */
   text?: boolean;
 };
-
-/**
- * The parcel routes return `sender` / `receiver` as raw database rows, so a
- * bcrypt hash rides along on every parcel response — including the public
- * tracking route. Drop it at the boundary so it can never reach component
- * state, localStorage or the DOM. This is a client-side guard, not a fix:
- * the field still needs stripping server-side.
- */
-function stripSecrets<T>(value: T): T {
-  if (Array.isArray(value)) return value.map(stripSecrets) as unknown as T;
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      if (k === 'password') continue;
-      out[k] = stripSecrets(v);
-    }
-    return out as T;
-  }
-  return value;
-}
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const isFormData =
@@ -108,7 +89,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new ApiError(message || 'Request failed', res.status);
   }
 
-  return stripSecrets(data) as T;
+  return data as T;
 }
 
 export const api = {
@@ -171,11 +152,28 @@ export const api = {
   unblockUser: (userId: string) =>
     request<User>(`/users/${userId}/unblock`, { method: 'PATCH' }),
 
+  /* ---------------------------------------------------- Courier approvals */
+
+  /** Applicants sitting at `PENDING_DELIVERY`, waiting on an admin. */
+  getPendingCouriers: () => request<User[]>('/users/delivery/pending'),
+
+  getCouriers: () => request<User[]>('/users/delivery'),
+
+  approveCourier: (userId: string) =>
+    request<User>(`/users/${userId}/delivery/approve`, { method: 'PATCH' }),
+
+  /** Rejection drops the applicant to SENDER so they can apply again. */
+  rejectCourier: (userId: string) =>
+    request<User>(`/users/${userId}/delivery/reject`, { method: 'PATCH' }),
+
   /* ------------------------------------------------------------- Parcels */
 
-  /** Public tracking route — takes the tracking code, not the uuid. */
+  /**
+   * Public tracking route — takes the tracking code, not the uuid, and returns
+   * the trimmed `PublicParcel`, never a full `Parcel`.
+   */
   getParcel: (trackingId: string) =>
-    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}`, {
+    request<PublicParcel>(`/parcels/${encodeURIComponent(trackingId)}`, {
       auth: false,
     }),
 
@@ -216,6 +214,25 @@ export const api = {
     request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/block`, {
       method: 'PATCH',
     }),
+
+  /* ------------------------------------------------------------ Couriers */
+
+  /** Needs an approved, active courier; refused on blocked/delivered/cancelled. */
+  assignParcel: (trackingId: string, deliveryPersonnelId: string) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/assign`, {
+      method: 'PATCH',
+      body: { deliveryPersonnelId },
+    }),
+
+  unassignParcel: (trackingId: string) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/unassign`, {
+      method: 'PATCH',
+    }),
+
+  /** The signed-in courier's active queue. */
+  getAssignedParcels: () => request<Parcel[]>('/parcels/assigned-parcels'),
+
+  getCompletedDeliveries: () => request<Parcel[]>('/parcels/completed-deliveries'),
 
   /* ----------------------------------------------------------- Dashboard */
 

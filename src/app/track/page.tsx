@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
-import type { Parcel } from '@/lib/types';
+import type { PublicParcel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -17,7 +17,7 @@ function TrackContent() {
   const initialId = searchParams.get('id') || '';
 
   const [trackingId, setTrackingId] = useState(initialId);
-  const [parcel, setParcel] = useState<Parcel | null>(null);
+  const [parcel, setParcel] = useState<PublicParcel | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -78,6 +78,12 @@ function TrackContent() {
           <p className="text-sm">
             Sender: {parcel.senderName} · Receiver: {parcel.receiverName}
           </p>
+          {/* The public route gives a first name only, never courier contact details. */}
+          {parcel.deliveryPersonnelName && (
+            <p className="text-sm text-ink-2">
+              Out with {parcel.deliveryPersonnelName}
+            </p>
+          )}
           {parcel.description && (
             <p className="text-sm text-ink-3">{parcel.description}</p>
           )}
@@ -92,7 +98,8 @@ function TrackContent() {
               <h2 className="mb-3 text-sm font-semibold">Journey</h2>
               <ol className="space-y-3">
                 {timeline.map((log, i) => (
-                  <li key={log.id} className="flex gap-3 text-sm">
+                  // The public timeline carries no log id — key on the entry itself.
+                  <li key={`${log.createdAt}-${log.status}`} className="flex gap-3 text-sm">
                     <span
                       className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
                         i === 0 ? 'bg-accent' : 'bg-surface-3'
@@ -100,11 +107,8 @@ function TrackContent() {
                     />
                     <div>
                       <p className="font-medium">{formatStatus(log.status)}</p>
-                      <p className="text-xs text-ink-3">
-                        {formatDate(log.createdAt)}
-                        {/* changedBy is absent on some list routes — guard it. */}
-                        {log.changedBy ? ` · ${log.changedBy.name}` : ''}
-                      </p>
+                      <p className="text-xs text-ink-3">{formatDate(log.createdAt)}</p>
+                      {/* Assignment notes name the courier by first name only. */}
                       {log.note && <p className="text-xs text-ink-2">{log.note}</p>}
                     </div>
                   </li>
