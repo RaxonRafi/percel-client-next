@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/use-auth';
+import { useAuth } from '@/lib/auth-context';
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 

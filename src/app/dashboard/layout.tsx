@@ -9,7 +9,7 @@ import {
   IconTruckDelivery, IconLogout, IconSearch, IconBell, IconArrowLeft,
 } from '@tabler/icons-react';
 import { logout } from '@/lib/api';
-import { useAuth } from '@/lib/use-auth';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
 import type { Role } from '@/lib/types';
 
 type NavItem = {
@@ -77,19 +77,38 @@ function initials(name: string): string {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </AuthProvider>
+  );
+}
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading } = useAuth({ redirectTo: '/login' });
+  const { user, status } = useAuth();
 
   async function handleLogout() {
     await logout();
     router.replace('/login');
   }
 
-  if (loading || !user) {
+  // This gate now covers only the cached-session read, so it clears in the
+  // first tick after hydration — the pages below start fetching immediately
+  // while `/users/me` verifies alongside them.
+  if (status === 'initializing') {
     return (
       <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: 'var(--ink3)' }}>
-        {loading ? 'Loading your dashboard…' : 'Redirecting to sign in…'}
+        Loading your dashboard…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: 'var(--ink3)' }}>
+        Redirecting to sign in…
       </div>
     );
   }

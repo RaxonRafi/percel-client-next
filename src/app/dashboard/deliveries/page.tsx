@@ -5,12 +5,13 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { api, ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/use-auth';
+import { useAuth } from '@/lib/auth-context';
 import { COURIER_STATUSES, type Parcel, type ParcelStatus } from '@/lib/types';
 import { formatDate, formatStatus, statusPillClass } from '@/lib/parcel-utils';
 
 export default function DeliveriesPage() {
   const { user } = useAuth();
+  const role = user?.role;
   const [queue, setQueue] = useState<Parcel[]>([]);
   const [completed, setCompleted] = useState<Parcel[]>([]);
   const [drafts, setDrafts] = useState<Record<string, { status: ParcelStatus; note: string }>>({});
@@ -32,8 +33,8 @@ export default function DeliveriesPage() {
   }, []);
 
   useEffect(() => {
-    if (user?.role === 'DELIVERY_PERSONNEL') load();
-  }, [load, user]);
+    if (role === 'DELIVERY_PERSONNEL') load();
+  }, [load, role]);
 
   async function updateStatus(parcel: Parcel) {
     const draft = drafts[parcel.id] ?? { status: parcel.status, note: '' };

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, ApiError } from '@/lib/api';
-import { useAuth } from '@/lib/use-auth';
+import { useAuth } from '@/lib/auth-context';
 import {
   PARCEL_STATUSES,
   type Parcel,
@@ -42,11 +42,14 @@ export default function ParcelsPage() {
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // Keyed on the role string so a new user object identity cannot refire this.
+  const role = user?.role;
+
   const load = useCallback(async () => {
-    if (!user) return;
+    if (!role) return;
     setError('');
     try {
-      if (user.role === 'ADMIN') {
+      if (role === 'ADMIN') {
         const [all, everyone, activeCouriers] = await Promise.all([
           api.getAllParcels(),
           api.getAllUsers(),
@@ -55,7 +58,7 @@ export default function ParcelsPage() {
         setParcels(all);
         setUsers(everyone);
         setCouriers(activeCouriers);
-      } else if (user.role === 'SENDER') {
+      } else if (role === 'SENDER') {
         setParcels(await api.getMyParcels());
       } else {
         // A receiver's two lists overlap — merge on id so nothing repeats.
@@ -68,7 +71,7 @@ export default function ParcelsPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load parcels');
     }
-  }, [user]);
+  }, [role]);
 
   useEffect(() => {
     load();

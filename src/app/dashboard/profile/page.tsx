@@ -8,13 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { api, ApiError, logout } from '@/lib/api';
-import { setStoredUser } from '@/lib/auth-storage';
 import { formatDate } from '@/lib/parcel-utils';
-import { useAuth } from '@/lib/use-auth';
+import { useAuth } from '@/lib/auth-context';
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, refresh } = useAuth({ redirectTo: '/login' });
+  const { user, applyUser } = useAuth();
 
   const [profile, setProfile] = useState({
     name: '',
@@ -49,8 +48,8 @@ export default function ProfilePage() {
         address: profile.address || null,
         nidNumber: profile.nidNumber || null,
       });
-      setStoredUser(updated);
-      await refresh();
+      // The PATCH already returns the updated record — no need to re-fetch it.
+      applyUser(updated);
       setMsg('Profile updated');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not update profile');

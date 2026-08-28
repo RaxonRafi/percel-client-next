@@ -7,7 +7,7 @@ import {
   IconUsers, IconUserCheck, IconUserOff, IconBan,
 } from '@tabler/icons-react';
 import { api } from '@/lib/api';
-import { useAuth } from '@/lib/use-auth';
+import { useAuth } from '@/lib/auth-context';
 import { PARCEL_STATUSES, type DashboardStats, type Parcel } from '@/lib/types';
 import {
   formatDate, formatStatus, mergeParcels, statusPillClass,
@@ -49,13 +49,17 @@ export default function DashboardPage() {
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [error, setError] = useState('');
 
+  // Keyed on the role string, not the user object: what to fetch depends only
+  // on the role, and an object dependency refires whenever identity changes.
+  const role = user?.role;
+
   useEffect(() => {
-    if (!user) return;
+    if (!role) return;
     let cancelled = false;
 
     (async () => {
       try {
-        if (user.role === 'ADMIN') {
+        if (role === 'ADMIN') {
           const [dashboard, all] = await Promise.all([
             api.getDashboard(),
             api.getAllParcels(),
@@ -63,16 +67,16 @@ export default function DashboardPage() {
           if (cancelled) return;
           setStats(dashboard);
           setParcels(all);
-        } else if (user.role === 'SENDER') {
+        } else if (role === 'SENDER') {
           const mine = await api.getMyParcels();
           if (!cancelled) setParcels(mine);
-        } else if (user.role === 'RECEIVER') {
+        } else if (role === 'RECEIVER') {
           const [incoming, history] = await Promise.all([
             api.getIncomingParcels(),
             api.getDeliveryHistory(),
           ]);
           if (!cancelled) setParcels(mergeParcels(incoming, history));
-        } else if (user.role === 'DELIVERY_PERSONNEL') {
+        } else if (role === 'DELIVERY_PERSONNEL') {
           const [queue, done] = await Promise.all([
             api.getAssignedParcels(),
             api.getCompletedDeliveries(),
@@ -88,7 +92,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [role]);
 
   // Non-admin roles have no stats endpoint, so derive the same counts locally.
   const byStatus =

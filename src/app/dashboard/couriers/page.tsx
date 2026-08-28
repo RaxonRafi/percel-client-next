@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { api, ApiError } from '@/lib/api';
 import { formatDate } from '@/lib/parcel-utils';
-import { useAuth } from '@/lib/use-auth';
+import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/lib/types';
 
 export default function CouriersPage() {
   const { user } = useAuth();
+  const role = user?.role;
   const [pending, setPending] = useState<User[]>([]);
   const [approved, setApproved] = useState<User[]>([]);
   const [error, setError] = useState('');
@@ -31,8 +32,8 @@ export default function CouriersPage() {
   }, []);
 
   useEffect(() => {
-    if (user?.role === 'ADMIN') load();
-  }, [load, user]);
+    if (role === 'ADMIN') load();
+  }, [load, role]);
 
   async function run(action: () => Promise<unknown>, success: string) {
     setError('');
