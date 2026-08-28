@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, X, FileText, ChevronRight, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Sparkles, Send, X, FileText, ChevronRight, AlertCircle, LogIn } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
+import { getAccessToken, onAuthChange } from '@/lib/auth-storage';
 import { cn } from '@/lib/utils';
 
 interface Source {
@@ -39,8 +41,18 @@ export function ChatWidget() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // `/rag/ask` needs a signed-in user — each call bills an embedding and a
+  // completion — but this widget also renders on the public pages.
+  const [signedIn, setSignedIn] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Read after mount: localStorage does not exist during the server render.
+    const sync = () => setSignedIn(Boolean(getAccessToken()));
+    sync();
+    return onAuthChange(sync);
+  }, []);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -50,7 +62,7 @@ export function ChatWidget() {
   }, [messages, isOpen, isLoading]);
 
   const handleSend = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+    if (!text.trim() || isLoading || !signedIn) return;
 
     const userMessage: Message = {
       id: Math.random().toString(36).substring(7),
@@ -78,6 +90,8 @@ export function ChatWidget() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
+      // The session can lapse mid-conversation; swap in the sign-in prompt.
+      if (err instanceof ApiError && err.status === 401) setSignedIn(false);
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
@@ -303,7 +317,7 @@ export function ChatWidget() {
           )}
 
           {/* SUGGESTIONS: Only show when user hasn't asked anything yet */}
-          {messages.length === 1 && !isLoading && (
+          {signedIn && messages.length === 1 && !isLoading && (
             <div className="pt-2 space-y-2 animate-fade-in">
               <span className="text-[10px] uppercase tracking-wider text-ink-3 font-bold px-1 block">
                 Common Questions
@@ -326,7 +340,20 @@ export function ChatWidget() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Bar */}
+        {/* Input Bar — replaced by a sign-in prompt when there is no session */}
+        {!signedIn ? (
+          <div className="p-3 border-t border-white/10 bg-black/20">
+            <p className="mb-2.5 text-xs text-white/70 leading-relaxed">
+              Sign in to ask the assistant about policies, tracking and claims.
+            </p>
+            <Link
+              href="/login"
+              className="flex h-9 w-full items-center justify-center gap-2 rounded-full bg-accent text-xs font-medium text-white transition-colors hover:bg-accent-2"
+            >
+              <LogIn className="h-3.5 w-3.5" /> Sign in to continue
+            </Link>
+          </div>
+        ) : (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -350,6 +377,7 @@ export function ChatWidget() {
             <Send className="h-4 w-4" />
           </button>
         </form>
+        )}
       </div>
     </>
   );

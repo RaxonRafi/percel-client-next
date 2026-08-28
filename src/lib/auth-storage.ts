@@ -55,6 +55,17 @@ export function setAuth(
   announce();
 }
 
+/**
+ * Replaces both tokens after a refresh. The server rotates on every refresh —
+ * the token we sent is revoked — so the new pair must be persisted together or
+ * the next refresh is rejected.
+ */
+export function setTokens(accessToken: string, refreshToken: string): void {
+  localStorage.setItem(ACCESS_KEY, accessToken);
+  localStorage.setItem(REFRESH_KEY, refreshToken);
+  announce();
+}
+
 /** Refreshes the cached profile after `/users/me` or a profile update. */
 export function setStoredUser(user: User): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));

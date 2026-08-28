@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { COURIER_STATUSES, type Parcel, type ParcelStatus } from '@/lib/types';
-import { formatDate, formatStatus, statusPillClass } from '@/lib/parcel-utils';
+import type { Parcel, ParcelStatus } from '@/lib/types';
+import {
+  allowedTransitions, formatDate, formatStatus, isTerminal, statusPillClass,
+} from '@/lib/parcel-utils';
 
 export default function DeliveriesPage() {
   const { user } = useAuth();
@@ -108,10 +110,11 @@ export default function DeliveriesPage() {
                 )}
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* A courier may only set these four — anything else is a 403. */}
+                  {/* The legal next moves only, minus the ones couriers may not set. */}
                   <select
                     className="h-9 rounded-md border border-surface-3 bg-white px-2 text-xs"
                     value={draft.status}
+                    disabled={isTerminal(p.status)}
                     onChange={(e) =>
                       setDrafts({
                         ...drafts,
@@ -119,7 +122,8 @@ export default function DeliveriesPage() {
                       })
                     }
                   >
-                    {COURIER_STATUSES.map((s) => (
+                    <option value={p.status}>{formatStatus(p.status)}</option>
+                    {allowedTransitions(p.status, 'DELIVERY_PERSONNEL').map((s) => (
                       <option key={s} value={s}>{formatStatus(s)}</option>
                     ))}
                   </select>

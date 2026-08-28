@@ -2,8 +2,7 @@ import { API_BASE_URL } from './config';
 import {
   getAccessToken,
   getRefreshToken,
-  getStoredUser,
-  setAuth,
+  setTokens,
   clearAuth,
 } from './auth-storage';
 import type {
@@ -80,13 +79,18 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    // Validation failures arrive as an array of rules, one per broken field.
     const message =
       typeof data === 'object' && data && 'message' in data
         ? Array.isArray((data as { message: string[] }).message)
           ? (data as { message: string[] }).message.join(', ')
           : String((data as { message: string }).message)
         : res.statusText;
-    throw new ApiError(message || 'Request failed', res.status);
+    const fallback =
+      res.status === 429
+        ? 'Too many requests — wait a moment and try again.'
+        : 'Request failed';
+    throw new ApiError(message || fallback, res.status);
   }
 
   return data as T;
@@ -102,21 +106,46 @@ export const api = {
       auth: false,
     }),
 
-  /** Stateless server-side — clearing the stored token is the client's job. */
-  logout: () => request<MessageResponse>('/auth/logout', { method: 'POST' }),
-
-  refreshToken: () =>
-    request<{ accessToken: string }>('/auth/refresh-token', {
+  /**
+   * Revokes one session when given its refresh token, or every session for the
+   * user when the body is omitted entirely.
+   */
+  logout: (refreshToken?: string) =>
+    request<MessageResponse>('/auth/logout', {
       method: 'POST',
-      body: { refreshToken: getRefreshToken() },
+      body: refreshToken ? { refreshToken } : undefined,
+    }),
+
+  /** Rotates: the token sent is revoked and a fresh pair comes back. */
+  refreshToken: (refreshToken: string) =>
+    request<{ accessToken: string; refreshToken: string }>('/auth/refresh-token', {
+      method: 'POST',
+      body: { refreshToken },
       auth: false,
       skipRefresh: true,
     }),
 
+  /** Ends every session for the user, this one included. */
   changePassword: (currentPassword: string, newPassword: string) =>
     request<MessageResponse>('/auth/change-password', {
       method: 'POST',
       body: { currentPassword, newPassword },
+    }),
+
+  /** Always reports success, so it cannot reveal who has an account. */
+  forgotPassword: (email: string) =>
+    request<MessageResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+      auth: false,
+    }),
+
+  /** The emailed token is single-use and expires after 30 minutes. */
+  resetPassword: (token: string, newPassword: string) =>
+    request<MessageResponse>('/auth/reset-password', {
+      method: 'POST',
+      body: { token, newPassword },
+      auth: false,
     }),
 
   /* --------------------------------------------------------------- Users */
@@ -240,12 +269,14 @@ export const api = {
 
   /* ----------------------------------------------------------------- RAG */
 
+  /** Needs any signed-in user — each call bills an embedding and a completion. */
   askRag: (question: string, filter = 'parcel') =>
     request<RagAnswer>('/rag/ask', {
       method: 'POST',
       body: { question, filter },
-      auth: false,
     }),
+
+  // Everything below mutates the vector store and is admin-only.
 
   uploadRagPdf: (file: File, category?: string) => {
     const form = new FormData();
@@ -253,34 +284,27 @@ export const api = {
     if (category) form.append('category', category);
     return request<{ message: string; filename: string; chunksIndexed: number }>(
       '/rag/pdf/upload',
-      { method: 'POST', body: form, auth: false },
+      { method: 'POST', body: form },
     );
   },
 
   deleteRagPdf: (source: string) =>
     request<MessageResponse>(`/rag/pdf/${encodeURIComponent(source)}`, {
       method: 'DELETE',
-      auth: false,
     }),
 
   indexParcel: (parcelId: string) =>
     request<MessageResponse>('/rag/index/parcel', {
       method: 'POST',
       body: { parcelId },
-      auth: false,
     }),
 
   indexAllParcels: () =>
-    request<MessageResponse>('/rag/index/bulk', {
-      method: 'POST',
-      body: {},
-      auth: false,
-    }),
+    request<MessageResponse>('/rag/index/bulk', { method: 'POST', body: {} }),
 
   removeIndexedParcel: (id: string) =>
     request<MessageResponse>(`/rag/index/parcel/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      auth: false,
     }),
 
   /* -------------------------------------------------------------- System */
@@ -289,27 +313,48 @@ export const api = {
   health: () => request<string>('', { auth: false, text: true }),
 };
 
-/** Swaps the stored refresh token for a fresh access token. */
-export async function refreshAccessToken(): Promise<string | null> {
+/**
+ * Refresh is single-flight. Rotation revokes the token as it is spent, so two
+ * concurrent 401s must not each try to redeem it — the loser would send an
+ * already-revoked token and sign the user out.
+ */
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function performRefresh(): Promise<string | null> {
+  const stored = getRefreshToken();
+  if (!stored) return null;
   try {
-    const { accessToken } = await api.refreshToken();
-    if (!accessToken) return null;
-    const user = getStoredUser();
-    const refresh = getRefreshToken();
-    if (user && refresh) setAuth(accessToken, refresh, user);
-    return accessToken;
+    const rotated = await api.refreshToken(stored);
+    if (!rotated?.accessToken) return null;
+    // Persist both halves: the old refresh token is dead from here on.
+    setTokens(rotated.accessToken, rotated.refreshToken ?? stored);
+    return rotated.accessToken;
   } catch {
     clearAuth();
     return null;
   }
 }
 
-/** Clears local credentials even if the (stateless) server call fails. */
-export async function logout(): Promise<void> {
+/** Swaps the stored refresh token for a freshly rotated pair. */
+export function refreshAccessToken(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = performRefresh().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+/**
+ * Ends this session server-side and locally. Pass `everywhere` to revoke every
+ * session for the user instead of just this one.
+ */
+export async function logout({ everywhere = false } = {}): Promise<void> {
+  const refresh = getRefreshToken();
   try {
-    await api.logout();
+    await api.logout(everywhere ? undefined : (refresh ?? undefined));
   } catch {
-    // The token is discarded locally either way.
+    // Local credentials are discarded either way.
   } finally {
     clearAuth();
   }

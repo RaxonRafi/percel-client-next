@@ -7,14 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import type { Parcel, ParcelStatus, User } from '@/lib/types';
 import {
-  PARCEL_STATUSES,
-  type Parcel,
-  type ParcelStatus,
-  type User,
-} from '@/lib/types';
-import {
-  formatDate, formatStatus, mergeParcels, statusPillClass,
+  allowedTransitions, formatDate, formatStatus, isTerminal, mergeParcels, statusPillClass,
 } from '@/lib/parcel-utils';
 
 const SELECT_CLASS =
@@ -334,7 +329,8 @@ export default function ParcelsPage() {
                     )}
                     <td className="py-3">
                       <div className="flex flex-wrap items-center gap-2">
-                        {user?.role === 'SENDER' && p.status === 'PENDING' && (
+                        {/* CANCELLED is reachable from any non-terminal state. */}
+                        {user?.role === 'SENDER' && !isTerminal(p.status) && (
                           <Button
                             size="sm"
                             variant="secondary"
@@ -344,7 +340,7 @@ export default function ParcelsPage() {
                             Cancel
                           </Button>
                         )}
-                        {user?.role === 'RECEIVER' && p.status !== 'DELIVERED' && p.status !== 'CANCELLED' && (
+                        {user?.role === 'RECEIVER' && !isTerminal(p.status) && (
                           <Button
                             size="sm"
                             disabled={busy}
@@ -355,9 +351,11 @@ export default function ParcelsPage() {
                         )}
                         {user?.role === 'ADMIN' && (
                           <>
+                            {/* Only the moves the state machine accepts. */}
                             <select
                               className="h-9 rounded-md border border-surface-3 bg-white px-2 text-xs"
                               value={draft.status}
+                              disabled={isTerminal(p.status)}
                               onChange={(e) =>
                                 setStatusDraft({
                                   ...statusDraft,
@@ -365,7 +363,8 @@ export default function ParcelsPage() {
                                 })
                               }
                             >
-                              {PARCEL_STATUSES.map((s) => (
+                              <option value={p.status}>{formatStatus(p.status)}</option>
+                              {allowedTransitions(p.status).map((s) => (
                                 <option key={s} value={s}>{formatStatus(s)}</option>
                               ))}
                             </select>

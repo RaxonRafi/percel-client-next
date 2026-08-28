@@ -1,4 +1,4 @@
-import type { Parcel, ParcelStatus } from './types';
+import { COURIER_STATUSES, type Parcel, type ParcelStatus } from './types';
 
 export function parcelStatusVariant(
   status: ParcelStatus,
@@ -39,6 +39,39 @@ export function formatDate(iso: string): string {
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+/**
+ * The server enforces a state machine on `PATCH /parcels/:trackingId/status`
+ * and answers anything else with a 400, so only offer the legal moves.
+ * `DELIVERED` and `CANCELLED` are terminal.
+ */
+const TRANSITIONS: Record<ParcelStatus, ParcelStatus[]> = {
+  PENDING: ['PICKED_UP', 'CANCELLED'],
+  PICKED_UP: ['IN_TRANSIT', 'CANCELLED'],
+  // IN_TRANSIT -> DELIVERED covers routes with no separate final leg.
+  IN_TRANSIT: ['OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+  OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
+  DELIVERED: [],
+  CANCELLED: [],
+};
+
+/**
+ * Legal next statuses from `current`. A courier is further restricted to the
+ * four statuses couriers may set — notably not `CANCELLED`.
+ */
+export function allowedTransitions(
+  current: ParcelStatus,
+  role?: string,
+): ParcelStatus[] {
+  const moves = TRANSITIONS[current] ?? [];
+  return role === 'DELIVERY_PERSONNEL'
+    ? moves.filter((s) => COURIER_STATUSES.includes(s))
+    : moves;
+}
+
+export function isTerminal(status: ParcelStatus): boolean {
+  return TRANSITIONS[status].length === 0;
 }
 
 /**

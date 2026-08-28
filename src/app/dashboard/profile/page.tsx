@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { api, ApiError, logout } from '@/lib/api';
+import { clearAuth } from '@/lib/auth-storage';
 import { formatDate } from '@/lib/parcel-utils';
 import { useAuth } from '@/lib/auth-context';
 
@@ -68,9 +69,14 @@ export default function ProfilePage() {
     }
     setBusy(true);
     try {
-      const res = await api.changePassword(passwords.current, passwords.next);
-      setMsg(res.message ?? 'Password changed successfully');
+      await api.changePassword(passwords.current, passwords.next);
       setPasswords({ current: '', next: '', confirm: '' });
+      // Changing the password revokes every session, this one included, so the
+      // stored refresh token is already dead — sign back in with the new one.
+      setMsg('Password changed. Signing you back in…');
+      clearAuth();
+      router.replace('/login');
+      return;
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not change password');
     } finally {
@@ -78,8 +84,8 @@ export default function ProfilePage() {
     }
   }
 
-  async function signOut() {
-    await logout();
+  async function signOut(everywhere = false) {
+    await logout({ everywhere });
     router.replace('/login');
   }
 
@@ -200,15 +206,27 @@ export default function ProfilePage() {
           </div>
         </form>
         <p className="mt-3 text-xs text-ink-3">
-          Existing tokens stay valid until they expire — the API does not revoke them.
+          Changing your password signs you out of every device. You will be asked to
+          sign in again with the new one.
         </p>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Session</CardTitle>
+          <CardTitle>Sessions</CardTitle>
         </CardHeader>
-        <Button variant="secondary" onClick={signOut}>Sign out</Button>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="secondary" onClick={() => signOut()}>
+            Sign out
+          </Button>
+          <Button variant="ghost" onClick={() => signOut(true)}>
+            Sign out everywhere
+          </Button>
+        </div>
+        <p className="mt-3 text-xs text-ink-3">
+          Signing out revokes this session immediately. An access token already issued
+          keeps working for up to 15 minutes.
+        </p>
       </Card>
     </div>
   );

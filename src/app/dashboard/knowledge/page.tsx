@@ -75,9 +75,9 @@ export default function KnowledgePage() {
 
       <Card>
         <p className="text-sm text-ink-2">
-          These endpoints are currently <strong>unauthenticated server-side</strong>, including the
-          two delete routes that drop documents from the vector store. This screen is restricted to
-          admins in the client only — the API still needs its own guard.
+          These routes are admin-only and enforced server-side. Indexing and deletions
+          change what the assistant can cite for every user, and AI routes are rate
+          limited to 20 requests per minute.
         </p>
       </Card>
 
