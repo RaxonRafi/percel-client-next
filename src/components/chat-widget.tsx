@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Sparkles, Send, X, FileText, ChevronRight, AlertCircle, LogIn } from 'lucide-react';
-import { api, ApiError } from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import { getAccessToken, onAuthChange } from '@/lib/auth-storage';
 import { cn } from '@/lib/utils';
 
@@ -135,7 +135,7 @@ export function ChatWidget() {
                 } else if (data.type === 'error') {
                   throw new Error(data.message);
                 }
-              } catch (e) {
+              } catch {
                 // Ignore parse errors on incomplete chunks if any, but it shouldn't happen with \n\n
               }
             }

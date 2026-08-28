@@ -4,8 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { formatStatus, formatMoney } from '@/lib/parcel-utils';
-import { PARCEL_STATUSES, type DashboardStats, type DashboardTrends } from '@/lib/types';
-import { Activity, TrendingUp, DollarSign, Package, Truck, Clock, Users } from 'lucide-react';
+import { type DashboardStats, type DashboardTrends } from '@/lib/types';
+import { Activity, TrendingUp, DollarSign, Package, Truck, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function AnalyticsPage() {
@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold font-display text-white">Analytics Overview</h1>
-          <p className="text-ink-3 text-sm mt-1">Track your platform's performance and revenue.</p>
+          <p className="text-ink-3 text-sm mt-1">Track your platform&apos;s performance and revenue.</p>
         </div>
         
         <div className="flex bg-surface-2 p-1 rounded-lg border border-surface-3">
@@ -88,7 +88,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <div className="p-6">
                 <div className="h-64 flex items-end gap-2">
-                  {trends.daily.length > 0 ? trends.daily.map((day, i) => {
+                  {trends.daily.length > 0 ? trends.daily.map((day) => {
                     const max = Math.max(...trends.daily.map(d => Math.max(d.created, d.delivered, 1)));
                     const hCreated = `${(day.created / max) * 100}%`;
                     const hDelivered = `${(day.delivered / max) * 100}%`;
