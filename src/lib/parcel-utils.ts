@@ -32,6 +32,11 @@ export function formatStatus(status: ParcelStatus): string {
     .join(' ');
 }
 
+/** Fees and COD are plain numbers in the local currency (BDT). */
+export function formatMoney(amount: number): string {
+  return `৳ ${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
     month: 'short',

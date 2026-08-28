@@ -8,7 +8,12 @@ import {
 } from '@tabler/icons-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { PARCEL_STATUSES, type DashboardStats, type Parcel } from '@/lib/types';
+import {
+  PARCEL_STATUSES,
+  type DashboardStats,
+  type Paginated,
+  type Parcel,
+} from '@/lib/types';
 import {
   formatDate, formatStatus, mergeParcels, statusPillClass,
 } from '@/lib/parcel-utils';
@@ -47,6 +52,9 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [parcels, setParcels] = useState<Parcel[]>([]);
+  /** Exact count from `meta.total`, even when only a page was fetched. */
+  const [listTotal, setListTotal] = useState<number | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState('');
 
   // Keyed on the role string, not the user object: what to fetch depends only
@@ -57,31 +65,45 @@ export default function DashboardPage() {
     if (!role) return;
     let cancelled = false;
 
+    /** Roles without a stats endpoint derive counts from the parcels they can
+     *  read. 100 is the server's max page size, so beyond that the breakdown
+     *  covers the most recent 100 and says so. */
+    const SAMPLE = { limit: 100 };
+
+    const absorb = (...pages: Paginated<Parcel>[]) => {
+      setParcels(mergeParcels(...pages.map((p) => p.data)));
+      setListTotal(pages.reduce((sum, p) => sum + p.meta.total, 0));
+      setTruncated(pages.some((p) => p.meta.total > p.data.length));
+    };
+
     (async () => {
       try {
         if (role === 'ADMIN') {
-          const [dashboard, all] = await Promise.all([
+          // Admins get exact figures from /dashboard, so only the recent rows
+          // are needed here.
+          const [dashboard, recent] = await Promise.all([
             api.getDashboard(),
-            api.getAllParcels(),
+            api.getAllParcels({ limit: 6 }),
           ]);
           if (cancelled) return;
           setStats(dashboard);
-          setParcels(all);
+          setParcels(recent.data);
+          setListTotal(recent.meta.total);
         } else if (role === 'SENDER') {
-          const mine = await api.getMyParcels();
-          if (!cancelled) setParcels(mine);
+          const mine = await api.getMyParcels(SAMPLE);
+          if (!cancelled) absorb(mine);
         } else if (role === 'RECEIVER') {
           const [incoming, history] = await Promise.all([
-            api.getIncomingParcels(),
-            api.getDeliveryHistory(),
+            api.getIncomingParcels(SAMPLE),
+            api.getDeliveryHistory(SAMPLE),
           ]);
-          if (!cancelled) setParcels(mergeParcels(incoming, history));
+          if (!cancelled) absorb(incoming, history);
         } else if (role === 'DELIVERY_PERSONNEL') {
           const [queue, done] = await Promise.all([
-            api.getAssignedParcels(),
-            api.getCompletedDeliveries(),
+            api.getAssignedParcels(SAMPLE),
+            api.getCompletedDeliveries(SAMPLE),
           ]);
-          if (!cancelled) setParcels(mergeParcels(queue, done));
+          if (!cancelled) absorb(queue, done);
         }
         // PENDING_DELIVERY has no readable parcel route — nothing to fetch.
       } catch (e) {
@@ -101,7 +123,8 @@ export default function DashboardPage() {
       PARCEL_STATUSES.map((s) => [s, parcels.filter((p) => p.status === s).length]),
     ) as Record<string, number>);
 
-  const totalParcels = stats?.totalParcels ?? parcels.length;
+  // meta.total is exact even when only a page came back.
+  const totalParcels = stats?.totalParcels ?? listTotal ?? parcels.length;
   const statusTotal = Object.values(byStatus).reduce((a, b) => a + b, 0) || 1;
   const recent = parcels.slice(0, 6);
 
@@ -150,6 +173,11 @@ export default function DashboardPage() {
         <div className="sp-card">
           <div className="card-header">
             <div className="card-title">Parcels by status</div>
+            {truncated && (
+              <span style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                most recent 100
+              </span>
+            )}
           </div>
           <div className="bar-chart">
             {PARCEL_STATUSES.map((status) => {

@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { api, ApiError } from '@/lib/api';
+import { Pagination } from '@/components/ui/pagination';
 import { formatDate } from '@/lib/parcel-utils';
-import type { Role, User } from '@/lib/types';
+import type { AccountStatus, PageMeta, Role, User } from '@/lib/types';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -15,6 +16,16 @@ export default function UsersPage() {
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const [meta, setMeta] = useState<PageMeta | null>(null);
+  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState({ search: '', role: '', isActive: '' });
+
+  /** Any filter change invalidates the current page number. */
+  function applyFilter(next: Partial<typeof filters>) {
+    setFilters({ ...filters, ...next });
+    setPage(1);
+  }
 
   // Staff accounts go through the same register route, but the request must
   // carry the current admin's token for a role other than SENDER to stick.
@@ -27,11 +38,19 @@ export default function UsersPage() {
 
   const load = useCallback(async () => {
     try {
-      setUsers(await api.getAllUsers());
+      const res = await api.getAllUsers({
+        page,
+        limit: 20,
+        search: filters.search || undefined,
+        role: (filters.role || undefined) as Role | undefined,
+        isActive: (filters.isActive || undefined) as AccountStatus | undefined,
+      });
+      setUsers(res.data);
+      setMeta(res.meta);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load users');
     }
-  }, []);
+  }, [page, filters.search, filters.role, filters.isActive]);
 
   useEffect(() => {
     load();
@@ -128,6 +147,38 @@ export default function UsersPage() {
         <CardHeader>
           <CardTitle>All users</CardTitle>
         </CardHeader>
+
+        <div className="mb-4 flex flex-wrap gap-3">
+          <Input
+            className="max-w-xs"
+            placeholder="Search name or email…"
+            value={filters.search}
+            onChange={(e) => applyFilter({ search: e.target.value })}
+          />
+          <select
+            className="h-11 rounded-md border border-surface-3 bg-white px-3 text-sm"
+            value={filters.role}
+            onChange={(e) => applyFilter({ role: e.target.value })}
+          >
+            <option value="">All roles</option>
+            {(['ADMIN', 'SENDER', 'RECEIVER', 'DELIVERY_PERSONNEL', 'PENDING_DELIVERY'] as Role[]).map(
+              (r) => (
+                <option key={r} value={r}>{r}</option>
+              ),
+            )}
+          </select>
+          <select
+            className="h-11 rounded-md border border-surface-3 bg-white px-3 text-sm"
+            value={filters.isActive}
+            onChange={(e) => applyFilter({ isActive: e.target.value })}
+          >
+            <option value="">Any status</option>
+            {(['ACTIVE', 'INACTIVE', 'BLOCKED'] as AccountStatus[]).map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -186,6 +237,7 @@ export default function UsersPage() {
             </tbody>
           </table>
         </div>
+        <Pagination meta={meta} onPage={setPage} busy={busy} />
       </Card>
 
       {selected && (

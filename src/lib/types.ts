@@ -35,6 +35,45 @@ export const COURIER_STATUSES: ParcelStatus[] = [
   'DELIVERED',
 ];
 
+/** Every list route returns this envelope now, never a bare array. */
+export interface Paginated<T> {
+  data: T[];
+  meta: PageMeta;
+}
+
+export interface PageMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+/** `limit` is capped at 100 server-side; unknown query params are a 400. */
+export interface ListQuery {
+  page?: number;
+  limit?: number;
+}
+
+export interface ParcelQuery extends ListQuery {
+  status?: ParcelStatus;
+  /** Partial, case-insensitive: tracking id, sender name or receiver name. */
+  search?: string;
+  from?: string;
+  to?: string;
+  /** Admin-only filters. */
+  isBlocked?: boolean;
+  unassigned?: boolean;
+}
+
+export interface UserQuery extends ListQuery {
+  role?: Role;
+  isActive?: AccountStatus;
+  /** Matches name or email. */
+  search?: string;
+}
+
 export interface AuthProvider {
   id: string;
   provider: 'google' | 'credentials';
@@ -95,6 +134,17 @@ export interface Parcel {
   description: string | null;
   status: ParcelStatus;
   isBlocked: boolean;
+  weightKg: number;
+  /** Computed server-side from weight and COD — the client never sends a price. */
+  deliveryFee: number;
+  /** Cash to collect on delivery; 0 means prepaid. */
+  codAmount: number;
+  isCodCollected: boolean;
+  deliveryProofImages: string[];
+  deliveryProofNote: string | null;
+  /** Who actually took the parcel, when that differs from the receiver. */
+  receivedBy: string | null;
+  deliveredAt: string | null;
   sender: User;
   receiver: User;
   /** The assigned courier, or null while the parcel is unassigned. */

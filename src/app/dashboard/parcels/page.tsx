@@ -5,11 +5,19 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Pagination } from '@/components/ui/pagination';
+import { DeliveryProofForm } from '@/components/delivery-proof-form';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import type { Parcel, ParcelStatus, User } from '@/lib/types';
 import {
-  allowedTransitions, formatDate, formatStatus, isTerminal, mergeParcels, statusPillClass,
+  PARCEL_STATUSES,
+  type PageMeta,
+  type Parcel,
+  type ParcelStatus,
+  type User,
+} from '@/lib/types';
+import {
+  allowedTransitions, formatDate, formatMoney, formatStatus, isTerminal, statusPillClass,
 } from '@/lib/parcel-utils';
 
 const SELECT_CLASS =
@@ -22,6 +30,8 @@ const EMPTY_FORM = {
   pickupAddress: '',
   deliveryAddress: '',
   description: '',
+  weightKg: '1',
+  codAmount: '',
 };
 
 export default function ParcelsPage() {
@@ -33,9 +43,19 @@ export default function ParcelsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [statusDraft, setStatusDraft] = useState<Record<string, { status: ParcelStatus; note: string }>>({});
   const [assignDraft, setAssignDraft] = useState<Record<string, string>>({});
+  const [proofFor, setProofFor] = useState<Parcel | null>(null);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const [meta, setMeta] = useState<PageMeta | null>(null);
+  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState<{ search: string; status: string }>({
+    search: '',
+    status: '',
+  });
+  /** Receivers read two separate lists; this picks which one is paginated. */
+  const [tab, setTab] = useState<'incoming' | 'history'>('incoming');
 
   // Keyed on the role string so a new user object identity cannot refire this.
   const role = user?.role;
@@ -43,34 +63,50 @@ export default function ParcelsPage() {
   const load = useCallback(async () => {
     if (!role) return;
     setError('');
+    const query = {
+      page,
+      limit: 20,
+      search: filters.search || undefined,
+      status: (filters.status || undefined) as ParcelStatus | undefined,
+    };
     try {
       if (role === 'ADMIN') {
         const [all, everyone, activeCouriers] = await Promise.all([
-          api.getAllParcels(),
-          api.getAllUsers(),
-          api.getCouriers(),
+          api.getAllParcels(query),
+          // Only receivers and couriers are needed for the pickers below.
+          api.getAllUsers({ role: 'RECEIVER', limit: 100 }),
+          api.getCouriers({ limit: 100 }),
         ]);
-        setParcels(all);
-        setUsers(everyone);
-        setCouriers(activeCouriers);
+        setParcels(all.data);
+        setMeta(all.meta);
+        setUsers(everyone.data);
+        setCouriers(activeCouriers.data);
       } else if (role === 'SENDER') {
-        setParcels(await api.getMyParcels());
+        const mine = await api.getMyParcels(query);
+        setParcels(mine.data);
+        setMeta(mine.meta);
       } else {
-        // A receiver's two lists overlap — merge on id so nothing repeats.
-        const [incoming, history] = await Promise.all([
-          api.getIncomingParcels(),
-          api.getDeliveryHistory(),
-        ]);
-        setParcels(mergeParcels(incoming, history));
+        const list =
+          tab === 'incoming'
+            ? await api.getIncomingParcels(query)
+            : await api.getDeliveryHistory(query);
+        setParcels(list.data);
+        setMeta(list.meta);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load parcels');
     }
-  }, [role]);
+  }, [role, page, filters.search, filters.status, tab]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  /** Any filter change invalidates the current page number. */
+  function applyFilter(next: Partial<typeof filters>) {
+    setFilters({ ...filters, ...next });
+    setPage(1);
+  }
 
   /** Runs a mutation, surfaces its error, and reloads on success. */
   async function run(action: () => Promise<unknown>, success: string) {
@@ -93,9 +129,15 @@ export default function ParcelsPage() {
     await run(
       () =>
         api.createParcel({
-          ...form,
+          receiverId: form.receiverId,
+          receiverName: form.receiverName,
+          pickupAddress: form.pickupAddress,
+          deliveryAddress: form.deliveryAddress,
           receiverPhone: form.receiverPhone || undefined,
           description: form.description || undefined,
+          // The fee is derived from weight server-side; we never send a price.
+          weightKg: Number(form.weightKg),
+          codAmount: form.codAmount ? Number(form.codAmount) : undefined,
         }),
       'Parcel created',
     );
@@ -189,8 +231,35 @@ export default function ParcelsPage() {
                 required
               />
             </div>
+            <div>
+              <Label>Weight (kg)</Label>
+              <Input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={form.weightKg}
+                onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <Label>Cash on delivery</Label>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={form.codAmount}
+                onChange={(e) => setForm({ ...form, codAmount: e.target.value })}
+                placeholder="0 — prepaid"
+              />
+            </div>
             <div className="md:col-span-2">
               <Button type="submit" disabled={busy}>Create shipment</Button>
+              <p className="mt-3 text-xs text-ink-3">
+                The delivery fee is calculated from the weight and any COD amount when
+                the parcel is created. A receiver without an account is emailed a link
+                to claim one.
+              </p>
             </div>
           </form>
         </Card>
@@ -203,9 +272,49 @@ export default function ParcelsPage() {
               ? 'All shipments'
               : user?.role === 'SENDER'
                 ? 'My shipments'
-                : 'Incoming & delivered'}
+                : tab === 'incoming'
+                  ? 'Incoming parcels'
+                  : 'Delivery history'}
           </CardTitle>
+          {user?.role === 'RECEIVER' && (
+            // The two receiver lists are separate routes, so they page apart.
+            <div className="flex gap-2">
+              {(['incoming', 'history'] as const).map((t) => (
+                <Button
+                  key={t}
+                  size="sm"
+                  variant={tab === t ? 'default' : 'secondary'}
+                  onClick={() => {
+                    setTab(t);
+                    setPage(1);
+                  }}
+                >
+                  {t === 'incoming' ? 'Incoming' : 'History'}
+                </Button>
+              ))}
+            </div>
+          )}
         </CardHeader>
+
+        <div className="mb-4 flex flex-wrap gap-3">
+          <Input
+            className="max-w-xs"
+            placeholder="Search tracking id or name…"
+            value={filters.search}
+            onChange={(e) => applyFilter({ search: e.target.value })}
+          />
+          <select
+            className="h-11 rounded-md border border-surface-3 bg-white px-3 text-sm"
+            value={filters.status}
+            onChange={(e) => applyFilter({ status: e.target.value })}
+          >
+            <option value="">All statuses</option>
+            {PARCEL_STATUSES.map((s) => (
+              <option key={s} value={s}>{formatStatus(s)}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -241,6 +350,34 @@ export default function ParcelsPage() {
                               ? `${p.deliveryPersonnel.name}${p.deliveryPersonnel.phone ? ` · ${p.deliveryPersonnel.phone}` : ''}`
                               : 'Not assigned yet'}
                           </p>
+                          <p>
+                            {p.weightKg} kg · Fee {formatMoney(p.deliveryFee)} ·{' '}
+                            {p.codAmount > 0
+                              ? `COD ${formatMoney(p.codAmount)}${p.isCodCollected ? ' (collected)' : ' (outstanding)'}`
+                              : 'Prepaid'}
+                          </p>
+                          {p.deliveredAt && (
+                            <p>
+                              Delivered {formatDate(p.deliveredAt)}
+                              {p.receivedBy ? ` — received by ${p.receivedBy}` : ''}
+                            </p>
+                          )}
+                          {p.deliveryProofNote && <p>Proof note: {p.deliveryProofNote}</p>}
+                          {p.deliveryProofImages?.length > 0 && (
+                            <p className="flex flex-wrap gap-2">
+                              {p.deliveryProofImages.map((src, i) => (
+                                <a
+                                  key={src}
+                                  href={src}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-accent hover:underline"
+                                >
+                                  Proof {i + 1}
+                                </a>
+                              ))}
+                            </p>
+                          )}
                           {p.description && <p>Note: {p.description}</p>}
                           <p className="pt-1 font-medium text-ink-2">Status history</p>
                           {(p.statusLogs ?? []).map((log) => (
@@ -253,14 +390,37 @@ export default function ParcelsPage() {
                           ))}
                           {(p.statusLogs ?? []).length === 0 && <p>No status history.</p>}
                           {user?.role === 'ADMIN' && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={busy}
-                              onClick={() => run(() => api.indexParcel(p.id), 'Parcel indexed for AI search')}
-                            >
-                              Index for AI search
-                            </Button>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busy}
+                                onClick={() => run(() => api.indexParcel(p.id), 'Parcel indexed for AI search')}
+                              >
+                                Index for AI search
+                              </Button>
+                              {allowedTransitions(p.status).includes('DELIVERED') && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled={busy}
+                                  onClick={() => setProofFor(proofFor?.id === p.id ? null : p)}
+                                >
+                                  Record delivery proof
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          {proofFor?.id === p.id && (
+                            <DeliveryProofForm
+                              parcel={p}
+                              onCancel={() => setProofFor(null)}
+                              onDone={async (message) => {
+                                setProofFor(null);
+                                setMsg(message);
+                                await load();
+                              }}
+                            />
                           )}
                         </div>
                       )}
@@ -422,6 +582,7 @@ export default function ParcelsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination meta={meta} onPage={setPage} busy={busy} />
       </Card>
     </div>
   );

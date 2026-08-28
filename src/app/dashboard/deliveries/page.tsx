@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Pagination } from '@/components/ui/pagination';
+import { DeliveryProofForm } from '@/components/delivery-proof-form';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import type { Parcel, ParcelStatus } from '@/lib/types';
+import type { PageMeta, Parcel, ParcelStatus } from '@/lib/types';
 import {
-  allowedTransitions, formatDate, formatStatus, isTerminal, statusPillClass,
+  allowedTransitions, formatDate, formatMoney, formatStatus, isTerminal, statusPillClass,
 } from '@/lib/parcel-utils';
 
 export default function DeliveriesPage() {
@@ -17,6 +19,11 @@ export default function DeliveriesPage() {
   const [queue, setQueue] = useState<Parcel[]>([]);
   const [completed, setCompleted] = useState<Parcel[]>([]);
   const [drafts, setDrafts] = useState<Record<string, { status: ParcelStatus; note: string }>>({});
+  const [proofFor, setProofFor] = useState<Parcel | null>(null);
+  const [queueMeta, setQueueMeta] = useState<PageMeta | null>(null);
+  const [doneMeta, setDoneMeta] = useState<PageMeta | null>(null);
+  const [queuePage, setQueuePage] = useState(1);
+  const [donePage, setDonePage] = useState(1);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,15 +31,17 @@ export default function DeliveriesPage() {
   const load = useCallback(async () => {
     try {
       const [active, done] = await Promise.all([
-        api.getAssignedParcels(),
-        api.getCompletedDeliveries(),
+        api.getAssignedParcels({ page: queuePage, limit: 20 }),
+        api.getCompletedDeliveries({ page: donePage, limit: 20 }),
       ]);
-      setQueue(active);
-      setCompleted(done);
+      setQueue(active.data);
+      setQueueMeta(active.meta);
+      setCompleted(done.data);
+      setDoneMeta(done.meta);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load your deliveries');
     }
-  }, []);
+  }, [queuePage, donePage]);
 
   useEffect(() => {
     if (role === 'DELIVERY_PERSONNEL') load();
@@ -73,7 +82,7 @@ export default function DeliveriesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Active queue</CardTitle>
-          <Badge variant={queue.length > 0 ? 'transit' : 'default'}>{queue.length} assigned</Badge>
+          <Badge variant={(queueMeta?.total ?? queue.length) > 0 ? 'transit' : 'default'}>{queueMeta?.total ?? queue.length} assigned</Badge>
         </CardHeader>
         <div className="space-y-4">
           {queue.map((p) => {
@@ -109,6 +118,22 @@ export default function DeliveriesPage() {
                   <p className="mb-3 text-sm text-ink-2">Note: {p.description}</p>
                 )}
 
+                <div className="mb-3 flex flex-wrap gap-4 text-sm">
+                  <span className="text-ink-3">
+                    Weight <span className="text-ink">{p.weightKg} kg</span>
+                  </span>
+                  <span className="text-ink-3">
+                    Fee <span className="text-ink">{formatMoney(p.deliveryFee)}</span>
+                  </span>
+                  {p.codAmount > 0 ? (
+                    <span className="font-medium text-amber">
+                      Collect {formatMoney(p.codAmount)}
+                    </span>
+                  ) : (
+                    <span className="text-ink-3">Prepaid</span>
+                  )}
+                </div>
+
                 <div className="flex flex-wrap items-center gap-2">
                   {/* The legal next moves only, minus the ones couriers may not set. */}
                   <select
@@ -123,9 +148,13 @@ export default function DeliveriesPage() {
                     }
                   >
                     <option value={p.status}>{formatStatus(p.status)}</option>
-                    {allowedTransitions(p.status, 'DELIVERY_PERSONNEL').map((s) => (
-                      <option key={s} value={s}>{formatStatus(s)}</option>
-                    ))}
+                    {/* DELIVERED is reached through the proof form instead, so
+                        the COD check and deliveredAt stamp are never skipped. */}
+                    {allowedTransitions(p.status, 'DELIVERY_PERSONNEL')
+                      .filter((s) => s !== 'DELIVERED')
+                      .map((s) => (
+                        <option key={s} value={s}>{formatStatus(s)}</option>
+                      ))}
                   </select>
                   <input
                     className="h-9 w-48 rounded-md border border-surface-3 px-2 text-xs"
@@ -137,12 +166,34 @@ export default function DeliveriesPage() {
                   />
                   <Button
                     size="sm"
+                    variant="secondary"
                     disabled={busy || draft.status === p.status}
                     onClick={() => updateStatus(p)}
                   >
                     Update status
                   </Button>
+                  {allowedTransitions(p.status, 'DELIVERY_PERSONNEL').includes('DELIVERED') && (
+                    <Button
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => setProofFor(proofFor?.id === p.id ? null : p)}
+                    >
+                      Complete delivery
+                    </Button>
+                  )}
                 </div>
+
+                {proofFor?.id === p.id && (
+                  <DeliveryProofForm
+                    parcel={p}
+                    onCancel={() => setProofFor(null)}
+                    onDone={async (message) => {
+                      setProofFor(null);
+                      setMsg(message);
+                      await load();
+                    }}
+                  />
+                )}
               </div>
             );
           })}
@@ -150,12 +201,13 @@ export default function DeliveriesPage() {
             <p className="py-6 text-center text-ink-3">Nothing assigned to you right now.</p>
           )}
         </div>
+        <Pagination meta={queueMeta} onPage={setQueuePage} busy={busy} />
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Completed deliveries</CardTitle>
-          <Badge variant="delivered">{completed.length} done</Badge>
+          <Badge variant="delivered">{doneMeta?.total ?? completed.length} done</Badge>
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -163,6 +215,8 @@ export default function DeliveriesPage() {
               <tr className="border-b border-surface-2 text-xs uppercase text-ink-3">
                 <th className="pb-3 text-left">Tracking</th>
                 <th className="pb-3 text-left">Delivered to</th>
+                <th className="pb-3 text-left">Received by</th>
+                <th className="pb-3 text-left">COD</th>
                 <th className="pb-3 text-left">Status</th>
                 <th className="pb-3 text-left">Completed</th>
               </tr>
@@ -172,15 +226,28 @@ export default function DeliveriesPage() {
                 <tr key={p.id} className="border-b border-surface-2">
                   <td className="py-3 font-medium">{p.trackingId}</td>
                   <td className="py-3 text-ink-3">{p.receiverName} · {p.deliveryAddress}</td>
+                  <td className="py-3">{p.receivedBy ?? '—'}</td>
+                  <td className="py-3">
+                    {p.codAmount > 0 ? (
+                      <span className={p.isCodCollected ? 'text-green' : 'text-red-600'}>
+                        {formatMoney(p.codAmount)}
+                        {p.isCodCollected ? ' collected' : ' outstanding'}
+                      </span>
+                    ) : (
+                      <span className="text-ink-3">Prepaid</span>
+                    )}
+                  </td>
                   <td className="py-3">
                     <span className={statusPillClass(p.status)}>{formatStatus(p.status)}</span>
                   </td>
-                  <td className="py-3 text-ink-3">{formatDate(p.updatedAt)}</td>
+                  <td className="py-3 text-ink-3">
+                    {formatDate(p.deliveredAt ?? p.updatedAt)}
+                  </td>
                 </tr>
               ))}
               {completed.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-6 text-center text-ink-3">
+                  <td colSpan={6} className="py-6 text-center text-ink-3">
                     No completed deliveries yet.
                   </td>
                 </tr>
@@ -188,6 +255,7 @@ export default function DeliveriesPage() {
             </tbody>
           </table>
         </div>
+        <Pagination meta={doneMeta} onPage={setDonePage} busy={busy} />
       </Card>
     </div>
   );

@@ -84,6 +84,21 @@ export default function ProfilePage() {
     }
   }
 
+  async function resendVerification() {
+    if (!user) return;
+    setError('');
+    setMsg('');
+    setBusy(true);
+    try {
+      await api.resendVerification(user.email);
+      setMsg('Confirmation email sent — check your inbox.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send the email');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function signOut(everywhere = false) {
     await logout({ everywhere });
     router.replace('/login');
@@ -95,6 +110,24 @@ export default function ProfilePage() {
     <div className="space-y-6">
       {error && <p className="text-sm text-red-600">{error}</p>}
       {msg && <p className="text-sm text-green">{msg}</p>}
+
+      {/* New accounts start unverified; no route demands it yet, but the flag
+          is meaningful now. */}
+      {!user.isVerified && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Confirm your email</CardTitle>
+            <Badge variant="pending">Unverified</Badge>
+          </CardHeader>
+          <p className="mb-4 text-sm text-ink-2">
+            We sent a confirmation link to <strong>{user.email}</strong> when the account
+            was created. Open it to verify the address.
+          </p>
+          <Button variant="secondary" disabled={busy} onClick={resendVerification}>
+            Send the link again
+          </Button>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

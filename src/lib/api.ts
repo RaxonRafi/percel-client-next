@@ -8,13 +8,17 @@ import {
 import type {
   AuthResponse,
   DashboardStats,
+  ListQuery,
   MessageResponse,
+  Paginated,
   Parcel,
+  ParcelQuery,
   ParcelStatus,
   PublicParcel,
   RagAnswer,
   Role,
   User,
+  UserQuery,
 } from './types';
 
 export class ApiError extends Error {
@@ -27,9 +31,13 @@ export class ApiError extends Error {
   }
 }
 
+type QueryValue = string | number | boolean | undefined;
+
 type RequestOptions = {
   method?: string;
   body?: unknown;
+  /** Appended as a query string; undefined entries are dropped. */
+  query?: Record<string, QueryValue>;
   /** false = never attach the bearer token (public routes) */
   auth?: boolean;
   /** internal: stops the 401 -> refresh -> retry loop from recursing */
@@ -37,6 +45,21 @@ type RequestOptions = {
   /** the response is plain text, not JSON */
   text?: boolean;
 };
+
+/**
+ * Unknown query params are rejected with a 400, exactly like unknown body
+ * fields, so anything undefined has to be left off rather than sent empty.
+ */
+function toQueryString(query?: Record<string, QueryValue>): string {
+  if (!query) return '';
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === '') continue;
+    params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const isFormData =
@@ -49,7 +72,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     }
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    return fetch(`${API_BASE_URL}${path}`, {
+    return fetch(`${API_BASE_URL}${path}${toQueryString(options.query)}`, {
       method: options.method ?? (options.body !== undefined ? 'POST' : 'GET'),
       headers,
       body: isFormData
@@ -148,6 +171,21 @@ export const api = {
       auth: false,
     }),
 
+  /** Flips `isVerified` using the token from the confirmation email. */
+  verifyEmail: (token: string) =>
+    request<MessageResponse>('/auth/verify-email', {
+      method: 'POST',
+      body: { token },
+      auth: false,
+    }),
+
+  resendVerification: (email: string) =>
+    request<MessageResponse>('/auth/resend-verification', {
+      method: 'POST',
+      body: { email },
+      auth: false,
+    }),
+
   /* --------------------------------------------------------------- Users */
 
   register: (payload: {
@@ -171,7 +209,8 @@ export const api = {
     >,
   ) => request<User>('/users/update-profile', { method: 'PATCH', body: payload }),
 
-  getAllUsers: () => request<User[]>('/users/all-users'),
+  getAllUsers: (query: UserQuery = {}) =>
+    request<Paginated<User>>('/users/all-users', { query: { ...query } }),
 
   getUser: (id: string) => request<User>(`/users/${id}`),
 
@@ -184,9 +223,11 @@ export const api = {
   /* ---------------------------------------------------- Courier approvals */
 
   /** Applicants sitting at `PENDING_DELIVERY`, waiting on an admin. */
-  getPendingCouriers: () => request<User[]>('/users/delivery/pending'),
+  getPendingCouriers: (query: ListQuery = {}) =>
+    request<Paginated<User>>('/users/delivery/pending', { query: { ...query } }),
 
-  getCouriers: () => request<User[]>('/users/delivery'),
+  getCouriers: (query: ListQuery = {}) =>
+    request<Paginated<User>>('/users/delivery', { query: { ...query } }),
 
   approveCourier: (userId: string) =>
     request<User>(`/users/${userId}/delivery/approve`, { method: 'PATCH' }),
@@ -206,13 +247,17 @@ export const api = {
       auth: false,
     }),
 
-  getAllParcels: () => request<Parcel[]>('/parcels'),
+  getAllParcels: (query: ParcelQuery = {}) =>
+    request<Paginated<Parcel>>('/parcels', { query: { ...query } }),
 
-  getMyParcels: () => request<Parcel[]>('/parcels/my-parcels'),
+  getMyParcels: (query: ParcelQuery = {}) =>
+    request<Paginated<Parcel>>('/parcels/my-parcels', { query: { ...query } }),
 
-  getIncomingParcels: () => request<Parcel[]>('/parcels/incoming-parcels'),
+  getIncomingParcels: (query: ParcelQuery = {}) =>
+    request<Paginated<Parcel>>('/parcels/incoming-parcels', { query: { ...query } }),
 
-  getDeliveryHistory: () => request<Parcel[]>('/parcels/delivery-history'),
+  getDeliveryHistory: (query: ParcelQuery = {}) =>
+    request<Paginated<Parcel>>('/parcels/delivery-history', { query: { ...query } }),
 
   createParcel: (payload: {
     receiverId: string;
@@ -221,6 +266,10 @@ export const api = {
     pickupAddress: string;
     deliveryAddress: string;
     description?: string;
+    /** Drives the fee. The client never sends a price. */
+    weightKg: number;
+    /** Cash to collect on delivery; omit or 0 for prepaid. */
+    codAmount?: number;
   }) => request<Parcel>('/parcels', { method: 'POST', body: payload }),
 
   updateParcelStatus: (trackingId: string, status: ParcelStatus, note?: string) =>
@@ -259,9 +308,31 @@ export const api = {
     }),
 
   /** The signed-in courier's active queue. */
-  getAssignedParcels: () => request<Parcel[]>('/parcels/assigned-parcels'),
+  getAssignedParcels: (query: ParcelQuery = {}) =>
+    request<Paginated<Parcel>>('/parcels/assigned-parcels', { query: { ...query } }),
 
-  getCompletedDeliveries: () => request<Parcel[]>('/parcels/completed-deliveries'),
+  getCompletedDeliveries: (query: ParcelQuery = {}) =>
+    request<Paginated<Parcel>>('/parcels/completed-deliveries', { query: { ...query } }),
+
+  /**
+   * Completes a delivery: moves the parcel to DELIVERED and stamps
+   * `deliveredAt`. A parcel with `codAmount > 0` is refused unless
+   * `codCollected` is true. Couriers may only submit for their own parcels.
+   */
+  submitDeliveryProof: (
+    trackingId: string,
+    payload: {
+      /** 1–5 image URLs. */
+      images: string[];
+      receivedBy?: string;
+      note?: string;
+      codCollected: boolean;
+    },
+  ) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/delivery-proof`, {
+      method: 'PATCH',
+      body: payload,
+    }),
 
   /* ----------------------------------------------------------- Dashboard */
 

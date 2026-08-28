@@ -5,31 +5,39 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { api, ApiError } from '@/lib/api';
+import { Pagination } from '@/components/ui/pagination';
 import { formatDate } from '@/lib/parcel-utils';
 import { useAuth } from '@/lib/auth-context';
-import type { User } from '@/lib/types';
+import type { PageMeta, User } from '@/lib/types';
 
 export default function CouriersPage() {
   const { user } = useAuth();
   const role = user?.role;
   const [pending, setPending] = useState<User[]>([]);
   const [approved, setApproved] = useState<User[]>([]);
+  const [pendingMeta, setPendingMeta] = useState<PageMeta | null>(null);
+  const [approvedMeta, setApprovedMeta] = useState<PageMeta | null>(null);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [approvedPage, setApprovedPage] = useState(1);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
+      // Two separate routes, so each keeps its own page cursor.
       const [applicants, couriers] = await Promise.all([
-        api.getPendingCouriers(),
-        api.getCouriers(),
+        api.getPendingCouriers({ page: pendingPage, limit: 20 }),
+        api.getCouriers({ page: approvedPage, limit: 20 }),
       ]);
-      setPending(applicants);
-      setApproved(couriers);
+      setPending(applicants.data);
+      setPendingMeta(applicants.meta);
+      setApproved(couriers.data);
+      setApprovedMeta(couriers.meta);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load delivery partners');
     }
-  }, []);
+  }, [pendingPage, approvedPage]);
 
   useEffect(() => {
     if (role === 'ADMIN') load();
@@ -62,8 +70,8 @@ export default function CouriersPage() {
       <Card>
         <CardHeader>
           <CardTitle>Pending applications</CardTitle>
-          <Badge variant={pending.length > 0 ? 'pending' : 'default'}>
-            {pending.length} waiting
+          <Badge variant={(pendingMeta?.total ?? pending.length) > 0 ? 'pending' : 'default'}>
+            {pendingMeta?.total ?? pending.length} waiting
           </Badge>
         </CardHeader>
         <p className="mb-4 text-sm text-ink-3">
@@ -120,12 +128,13 @@ export default function CouriersPage() {
             </tbody>
           </table>
         </div>
+        <Pagination meta={pendingMeta} onPage={setPendingPage} busy={busy} />
       </Card>
 
       <Card>
         <CardHeader>
           <CardTitle>Approved couriers</CardTitle>
-          <Badge variant="delivered">{approved.length} active</Badge>
+          <Badge variant="delivered">{approvedMeta?.total ?? approved.length} active</Badge>
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -194,6 +203,7 @@ export default function CouriersPage() {
             </tbody>
           </table>
         </div>
+        <Pagination meta={approvedMeta} onPage={setApprovedPage} busy={busy} />
       </Card>
     </div>
   );
