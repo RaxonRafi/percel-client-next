@@ -196,3 +196,52 @@ export interface RagAnswer {
 export interface MessageResponse {
   message: string;
 }
+
+export interface DashboardTrends {
+  rangeDays: number;
+  daily: { date: string; created: number; delivered: number }[];
+  statusTimings: { status: ParcelStatus; averageHours: number | null; sampleSize: number }[];
+  courierThroughput: {
+    courierId: string;
+    courierName: string;
+    active: number;
+    delivered: number;
+    averageDeliveryHours: number | null;
+  }[];
+  revenue: {
+    deliveryFeesBooked: number;
+    deliveryFeesDelivered: number;
+    codOutstanding: number;
+    codCollected: number;
+  };
+  averageFulfilmentHours: number | null;
+}
+
+export type AuditLogAction =
+  | 'USER_BLOCKED'
+  | 'USER_UNBLOCKED'
+  | 'DELIVERY_APPROVED'
+  | 'DELIVERY_REJECTED'
+  | 'PARCEL_BLOCKED'
+  | 'PARCEL_ASSIGNED'
+  | 'PARCEL_UNASSIGNED'
+  | 'PARCEL_STATUS_CHANGED';
+
+export type AuditLogTargetType = 'USER' | 'PARCEL';
+
+export interface AuditLog {
+  id: string;
+  actorEmail: string | null;
+  action: AuditLogAction;
+  targetType: AuditLogTargetType;
+  targetId: string;
+  summary: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface AuditLogQuery extends ListQuery {
+  action?: AuditLogAction;
+  targetType?: AuditLogTargetType;
+  targetId?: string;
+}

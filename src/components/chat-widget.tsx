@@ -75,25 +75,84 @@ export function ChatWidget() {
     setInputValue('');
     setIsLoading(true);
     setError(null);
+    
+    // Create an empty assistant message to stream into
+    const assistantId = Math.random().toString(36).substring(7);
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantId, role: 'assistant', content: '', sources: [], timestamp: new Date() }
+    ]);
 
     try {
-      // Calling RAG API endpoint. Default filter is 'parcel'
-      const response = await api.askRag(text.trim(), 'parcel');
+      const token = getAccessToken();
+      const { API_BASE_URL } = await import('@/lib/config');
       
-      const assistantMessage: Message = {
-        id: Math.random().toString(36).substring(7),
-        role: 'assistant',
-        content: response.answer,
-        sources: response.sources,
-        timestamp: new Date(),
-      };
+      const res = await fetch(`${API_BASE_URL}/rag/ask/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ question: text.trim(), filter: 'parcel' }),
+      });
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      if (!res.ok) {
+        if (res.status === 401) setSignedIn(false);
+        throw new Error('Failed to connect to assistant');
+      }
+
+      if (!res.body) throw new Error('ReadableStream not supported');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let buffer = '';
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
+
+          for (const part of parts) {
+            if (part.startsWith('data: ')) {
+              const dataStr = part.slice(6).trim();
+              if (!dataStr) continue;
+              
+              try {
+                const data = JSON.parse(dataStr);
+                if (data.type === 'sources') {
+                  setMessages((prev) => 
+                    prev.map(m => m.id === assistantId ? { ...m, sources: data.sources } : m)
+                  );
+                } else if (data.type === 'token') {
+                  setMessages((prev) => 
+                    prev.map(m => m.id === assistantId ? { ...m, content: m.content + data.token } : m)
+                  );
+                } else if (data.type === 'done') {
+                  done = true;
+                } else if (data.type === 'error') {
+                  throw new Error(data.message);
+                }
+              } catch (e) {
+                // Ignore parse errors on incomplete chunks if any, but it shouldn't happen with \n\n
+              }
+            }
+          }
+        }
+        if (readerDone) done = true;
+      }
+      setIsLoading(false);
     } catch (err) {
-      // The session can lapse mid-conversation; swap in the sign-in prompt.
       if (err instanceof ApiError && err.status === 401) setSignedIn(false);
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
-    } finally {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      // Remove the empty assistant message if it failed before generating anything
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last.id === assistantId && !last.content) return prev.slice(0, -1);
+        return prev;
+      });
       setIsLoading(false);
     }
   };

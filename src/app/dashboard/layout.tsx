@@ -7,6 +7,7 @@ import {
   IconPackage, IconLayoutDashboard, IconPackages,
   IconUsers, IconChartBar, IconUser, IconRobot,
   IconTruckDelivery, IconLogout, IconSearch, IconBell, IconArrowLeft,
+  IconShield,
 } from '@tabler/icons-react';
 import { logout } from '@/lib/api';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
@@ -47,6 +48,7 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
       { label: 'Customers', href: '/dashboard/users', icon: IconUsers, roles: ['ADMIN'] },
       { label: 'Couriers', href: '/dashboard/couriers', icon: IconTruckDelivery, roles: ['ADMIN'] },
       { label: 'Analytics', href: '/dashboard/analytics', icon: IconChartBar, roles: ['ADMIN'] },
+      { label: 'Audit Logs', href: '/dashboard/audit', icon: IconShield, roles: ['ADMIN'] },
       { label: 'AI knowledge', href: '/dashboard/knowledge', icon: IconRobot, roles: ['ADMIN'] },
     ],
   },
@@ -63,6 +65,7 @@ const TITLES: Record<string, string> = {
   '/dashboard/users': 'Customers',
   '/dashboard/couriers': 'Delivery partners',
   '/dashboard/analytics': 'Analytics',
+  '/dashboard/audit': 'System Audit Logs',
   '/dashboard/knowledge': 'AI knowledge base',
   '/dashboard/profile': 'Profile',
 };

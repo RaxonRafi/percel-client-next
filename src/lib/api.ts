@@ -19,6 +19,9 @@ import type {
   Role,
   User,
   UserQuery,
+  DashboardTrends,
+  AuditLog,
+  AuditLogQuery,
 } from './types';
 
 export class ApiError extends Error {
@@ -338,6 +341,11 @@ export const api = {
 
   getDashboard: () => request<DashboardStats>('/dashboard'),
 
+  getDashboardTrends: (days?: number) =>
+    request<DashboardTrends>('/dashboard/trends', {
+      query: days ? { days } : undefined,
+    }),
+
   /* ----------------------------------------------------------------- RAG */
 
   /** Needs any signed-in user — each call bills an embedding and a completion. */
@@ -382,6 +390,16 @@ export const api = {
 
   /** `GET /api` — plain-text health probe. */
   health: () => request<string>('', { auth: false, text: true }),
+
+  /* --------------------------------------------------------------- Audit */
+
+  getAuditLogs: (query: AuditLogQuery = {}) =>
+    request<Paginated<AuditLog>>('/audit-logs', { query: { ...query } }),
+
+  getAuditLogsForTarget: (targetId: string, query: AuditLogQuery = {}) =>
+    request<Paginated<AuditLog>>(`/audit-logs/target/${encodeURIComponent(targetId)}`, {
+      query: { ...query },
+    }),
 };
 
 /**
