@@ -84,7 +84,7 @@ export default function AuditLogsPage() {
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-display text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold font-display text-ink flex items-center gap-2">
             <Shield className="h-6 w-6 text-accent" />
             System Audit Logs
           </h1>
@@ -92,10 +92,10 @@ export default function AuditLogsPage() {
         </div>
       </div>
 
-      <Card className="border-surface-3 bg-surface/50 backdrop-blur-xl">
-        <div className="p-4 border-b border-white/5 bg-white/[0.02] flex flex-wrap gap-3">
+      <Card className="border-surface-3 bg-surface">
+        <div className="p-4 border-b border-surface-3 bg-surface-2/50 flex flex-wrap gap-3">
           <select
-            className="h-10 rounded-md border border-surface-3 bg-surface px-3 text-sm text-white focus:border-accent focus:ring-1 focus:ring-accent outline-none min-w-[160px]"
+            className="h-10 rounded-md border border-surface-3 bg-surface px-3 text-sm text-ink focus:border-accent focus:ring-1 focus:ring-accent outline-none min-w-[160px]"
             value={filters.action}
             onChange={(e) => applyFilter({ action: e.target.value })}
           >
@@ -107,7 +107,7 @@ export default function AuditLogsPage() {
           </select>
           
           <select
-            className="h-10 rounded-md border border-surface-3 bg-surface px-3 text-sm text-white focus:border-accent focus:ring-1 focus:ring-accent outline-none"
+            className="h-10 rounded-md border border-surface-3 bg-surface px-3 text-sm text-ink focus:border-accent focus:ring-1 focus:ring-accent outline-none"
             value={filters.targetType}
             onChange={(e) => applyFilter({ targetType: e.target.value })}
           >
@@ -117,7 +117,7 @@ export default function AuditLogsPage() {
           </select>
 
           <Input
-            className="max-w-xs h-10 bg-surface border-surface-3 text-white"
+            className="max-w-xs h-10 bg-surface border-surface-3 text-ink placeholder:text-ink-3"
             placeholder="Search by Target ID"
             value={filters.targetId}
             onChange={(e) => applyFilter({ targetId: e.target.value })}
@@ -127,7 +127,7 @@ export default function AuditLogsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-white/5 bg-white/[0.01] text-xs uppercase text-ink-3">
+              <tr className="border-b border-surface-3 bg-surface-2/30 text-xs uppercase text-ink-3">
                 <th className="px-6 py-4 text-left font-semibold">Timestamp</th>
                 <th className="px-6 py-4 text-left font-semibold">Action</th>
                 <th className="px-6 py-4 text-left font-semibold">Actor</th>
@@ -135,23 +135,23 @@ export default function AuditLogsPage() {
                 <th className="px-6 py-4 text-left font-semibold">Details</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-surface-3">
               {logs.map((log) => (
-                <tr key={log.id} className="hover:bg-white/[0.02] transition-colors group">
+                <tr key={log.id} className="hover:bg-surface-2/50 transition-colors group">
                   <td className="px-6 py-4 whitespace-nowrap text-ink-3">
                     {formatDate(log.createdAt)}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-md bg-white/5 group-hover:bg-white/10 transition-colors">
+                      <div className="p-1.5 rounded-md bg-surface-2 group-hover:bg-surface-3 transition-colors">
                         {getActionIcon(log.action)}
                       </div>
-                      <span className="font-medium text-white">{log.action.replace(/_/g, ' ')}</span>
+                      <span className="font-medium text-ink">{log.action.replace(/_/g, ' ')}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     {log.actorEmail ? (
-                      <span className="text-white">{log.actorEmail}</span>
+                      <span className="text-ink">{log.actorEmail}</span>
                     ) : (
                       <span className="text-ink-3 italic">System / Deleted User</span>
                     )}
@@ -159,7 +159,7 @@ export default function AuditLogsPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1.5">
                       <span className="text-ink-3">{getTargetIcon(log.targetType)}</span>
-                      <span className="font-mono text-xs bg-white/5 px-2 py-0.5 rounded text-white/80">
+                      <span className="font-mono text-xs bg-surface-2 px-2 py-0.5 rounded text-ink-2">
                         {log.targetId}
                       </span>
                     </div>
@@ -167,7 +167,7 @@ export default function AuditLogsPage() {
                   <td className="px-6 py-4">
                     <span className="text-ink-2">{log.summary ?? '-'}</span>
                     {log.metadata && Object.keys(log.metadata).length > 0 && (
-                      <div className="mt-1.5 text-xs text-ink-3 bg-black/20 p-2 rounded border border-white/5 overflow-x-auto max-w-sm">
+                      <div className="mt-1.5 text-xs text-ink-2 bg-surface-2 p-2 rounded border border-surface-3 overflow-x-auto max-w-sm">
                         <pre className="font-mono">{JSON.stringify(log.metadata, null, 2)}</pre>
                       </div>
                     )}
@@ -184,7 +184,7 @@ export default function AuditLogsPage() {
             </tbody>
           </table>
         </div>
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-surface-3">
           <Pagination meta={meta} onPage={setPage} busy={busy} />
         </div>
       </Card>

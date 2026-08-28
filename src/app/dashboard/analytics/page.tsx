@@ -41,7 +41,7 @@ export default function AnalyticsPage() {
     <div className="space-y-8 pb-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-display text-white">Analytics Overview</h1>
+          <h1 className="text-2xl font-bold font-display text-ink">Analytics Overview</h1>
           <p className="text-ink-3 text-sm mt-1">Track your platform&apos;s performance and revenue.</p>
         </div>
         
@@ -54,7 +54,7 @@ export default function AnalyticsPage() {
                 "px-4 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer",
                 days === d 
                   ? "bg-accent text-white shadow-sm" 
-                  : "text-ink-3 hover:text-white hover:bg-surface-3"
+                  : "text-ink-3 hover:text-ink hover:bg-surface-3"
               )}
             >
               {d} Days
@@ -79,8 +79,8 @@ export default function AnalyticsPage() {
 
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Main Chart Area */}
-            <Card className="lg:col-span-2 overflow-hidden border-surface-3 bg-surface/50 backdrop-blur-xl">
-              <CardHeader className="border-b border-white/5 bg-white/[0.02]">
+            <Card className="lg:col-span-2 overflow-hidden border-surface-3 bg-surface">
+              <CardHeader className="border-b border-surface-3 bg-surface-2/50">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Activity className="h-5 w-5 text-accent" />
                   Volume Over Time
@@ -96,10 +96,10 @@ export default function AnalyticsPage() {
                     return (
                       <div key={day.date} className="flex-1 flex flex-col justify-end group relative h-full">
                         {/* Tooltip */}
-                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-ink px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-xl border border-white/10">
-                          <div className="font-bold mb-1 border-b border-white/10 pb-1">{day.date}</div>
-                          <div className="text-amber-400">Created: {day.created}</div>
-                          <div className="text-green-400">Delivered: {day.delivered}</div>
+                        <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-surface px-3 py-2 rounded-lg text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-xl border border-surface-3">
+                          <div className="font-bold mb-1 border-b border-surface-3 pb-1 text-ink">{day.date}</div>
+                          <div className="text-amber-500">Created: {day.created}</div>
+                          <div className="text-green-500">Delivered: {day.delivered}</div>
                         </div>
                         
                         <div className="w-full flex gap-0.5 items-end justify-center h-full">
@@ -120,29 +120,29 @@ export default function AnalyticsPage() {
             </Card>
 
             {/* Revenue breakdown */}
-            <Card className="border-surface-3 bg-surface/50 backdrop-blur-xl flex flex-col">
-              <CardHeader className="border-b border-white/5 bg-white/[0.02]">
+            <Card className="border-surface-3 bg-surface flex flex-col">
+              <CardHeader className="border-b border-surface-3 bg-surface-2/50">
                 <CardTitle className="text-lg">Financials</CardTitle>
               </CardHeader>
               <div className="p-6 flex-1 flex flex-col gap-6">
                 <FinancialRow label="Booked Fees" value={trends.revenue.deliveryFeesBooked} />
-                <FinancialRow label="Realized Revenue" value={trends.revenue.deliveryFeesDelivered} color="text-green-400" />
+                <FinancialRow label="Realized Revenue" value={trends.revenue.deliveryFeesDelivered} color="text-green-500" />
                 <div className="h-px bg-surface-3 w-full" />
                 <FinancialRow label="COD Collected" value={trends.revenue.codCollected} />
-                <FinancialRow label="COD Outstanding" value={trends.revenue.codOutstanding} color="text-amber-400" />
+                <FinancialRow label="COD Outstanding" value={trends.revenue.codOutstanding} color="text-amber-500" />
               </div>
             </Card>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Courier Performance */}
-            <Card className="border-surface-3 bg-surface/50 backdrop-blur-xl flex flex-col max-h-96">
-              <CardHeader className="border-b border-white/5 bg-white/[0.02]">
+            <Card className="border-surface-3 bg-surface flex flex-col max-h-96">
+              <CardHeader className="border-b border-surface-3 bg-surface-2/50">
                 <CardTitle className="text-lg">Courier Performance</CardTitle>
               </CardHeader>
               <div className="p-0 overflow-y-auto flex-1">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-ink-3 uppercase bg-white/[0.02] sticky top-0 backdrop-blur-xl z-10 border-b border-surface-3">
+                  <thead className="text-xs text-ink-3 uppercase bg-surface-2/50 sticky top-0 z-10 border-b border-surface-3">
                     <tr>
                       <th className="px-6 py-4 font-medium">Courier</th>
                       <th className="px-6 py-4 font-medium text-right">Active</th>
@@ -152,10 +152,10 @@ export default function AnalyticsPage() {
                   </thead>
                   <tbody className="divide-y divide-surface-3">
                     {trends.courierThroughput.map(c => (
-                      <tr key={c.courierId} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="px-6 py-4 font-medium text-white">{c.courierName}</td>
-                        <td className="px-6 py-4 text-right text-amber-400">{c.active}</td>
-                        <td className="px-6 py-4 text-right text-green-400">{c.delivered}</td>
+                      <tr key={c.courierId} className="hover:bg-surface-2/30 transition-colors">
+                        <td className="px-6 py-4 font-medium text-ink">{c.courierName}</td>
+                        <td className="px-6 py-4 text-right text-amber-500">{c.active}</td>
+                        <td className="px-6 py-4 text-right text-green-500">{c.delivered}</td>
                         <td className="px-6 py-4 text-right text-ink-3">
                           {c.averageDeliveryHours ? `${Math.round(c.averageDeliveryHours)}h` : '-'}
                         </td>
@@ -172,8 +172,8 @@ export default function AnalyticsPage() {
             </Card>
 
             {/* Dwell Times */}
-            <Card className="border-surface-3 bg-surface/50 backdrop-blur-xl flex flex-col max-h-96">
-              <CardHeader className="border-b border-white/5 bg-white/[0.02]">
+            <Card className="border-surface-3 bg-surface flex flex-col max-h-96">
+              <CardHeader className="border-b border-surface-3 bg-surface-2/50">
                 <CardTitle className="text-lg flex justify-between items-center">
                   Status Dwell Times
                   <span className="text-xs font-normal text-ink-3">Completed stages</span>
@@ -192,7 +192,7 @@ export default function AnalyticsPage() {
                           style={{ width: w }} 
                         />
                       </div>
-                      <div className="w-16 text-right text-xs font-bold text-white">
+                      <div className="w-16 text-right text-xs font-bold text-ink">
                         {s.averageHours ? `${s.averageHours.toFixed(1)}h` : '-'}
                       </div>
                     </div>
@@ -209,8 +209,8 @@ export default function AnalyticsPage() {
 
 function KpiCard({ title, value, icon: Icon, trend }: { title: string, value: string | number, icon: React.ElementType, trend?: string }) {
   return (
-    <Card className="border-surface-3 bg-gradient-to-br from-surface to-surface-2 overflow-hidden relative group">
-      <div className="absolute -right-6 -top-6 text-white/[0.03] group-hover:text-white/[0.05] transition-all duration-500 transform group-hover:scale-110 group-hover:-rotate-12">
+    <Card className="border-surface-3 bg-surface overflow-hidden relative group">
+      <div className="absolute -right-6 -top-6 text-ink-3/10 group-hover:text-ink-3/20 transition-all duration-500 transform group-hover:scale-110 group-hover:-rotate-12">
         <Icon size={120} />
       </div>
       <div className="p-5 relative z-10">
@@ -218,16 +218,16 @@ function KpiCard({ title, value, icon: Icon, trend }: { title: string, value: st
           <div className="p-2 bg-accent/10 text-accent rounded-lg">
             <Icon size={20} />
           </div>
-          {trend && <span className="text-xs font-bold text-green-400 bg-green-400/10 px-2 py-1 rounded-full flex items-center gap-1"><TrendingUp size={12}/> {trend}</span>}
+          {trend && <span className="text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded-full flex items-center gap-1"><TrendingUp size={12}/> {trend}</span>}
         </div>
-        <div className="text-3xl font-display font-bold text-white mb-1">{value}</div>
+        <div className="text-3xl font-display font-bold text-ink mb-1">{value}</div>
         <div className="text-xs text-ink-3 uppercase tracking-wider font-semibold">{title}</div>
       </div>
     </Card>
   );
 }
 
-function FinancialRow({ label, value, color = "text-white" }: { label: string, value: number, color?: string }) {
+function FinancialRow({ label, value, color = "text-ink" }: { label: string, value: number, color?: string }) {
   return (
     <div className="flex justify-between items-center">
       <div className="text-sm text-ink-2 font-medium">{label}</div>
