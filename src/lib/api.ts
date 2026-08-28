@@ -9,7 +9,11 @@ import {
 import type {
   AuthResponse,
   DashboardStats,
+  MessageResponse,
   Parcel,
+  ParcelStatus,
+  RagAnswer,
+  Role,
   User,
 } from './types';
 
@@ -26,24 +30,71 @@ export class ApiError extends Error {
 type RequestOptions = {
   method?: string;
   body?: unknown;
+  /** false = never attach the bearer token (public routes) */
   auth?: boolean;
+  /** internal: stops the 401 -> refresh -> retry loop from recursing */
+  skipRefresh?: boolean;
+  /** the response is plain text, not JSON */
+  text?: boolean;
 };
 
+/**
+ * The parcel routes return `sender` / `receiver` as raw database rows, so a
+ * bcrypt hash rides along on every parcel response — including the public
+ * tracking route. Drop it at the boundary so it can never reach component
+ * state, localStorage or the DOM. This is a client-side guard, not a fix:
+ * the field still needs stripping server-side.
+ */
+function stripSecrets<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(stripSecrets) as unknown as T;
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (k === 'password') continue;
+      out[k] = stripSecrets(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+  const isFormData =
+    typeof FormData !== 'undefined' && options.body instanceof FormData;
+
+  const send = (token: string | null) => {
+    const headers: Record<string, string> = {};
+    if (!isFormData && options.body !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    return fetch(`${API_BASE_URL}${path}`, {
+      method: options.method ?? (options.body !== undefined ? 'POST' : 'GET'),
+      headers,
+      body: isFormData
+        ? (options.body as FormData)
+        : options.body !== undefined
+          ? JSON.stringify(options.body)
+          : undefined,
+    });
   };
 
-  if (options.auth !== false) {
-    const token = getAccessToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
+  const useAuth = options.auth !== false;
+  let res = await send(useAuth ? getAccessToken() : null);
+
+  // An expired access token is recoverable: swap it for a fresh one and retry
+  // once. Without this, any tab left open past the token TTL dies on a 401.
+  if (res.status === 401 && useAuth && !options.skipRefresh && getRefreshToken()) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) res = await send(refreshed);
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method ?? (options.body ? 'POST' : 'GET'),
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  if (options.text) {
+    const body = await res.text();
+    if (!res.ok) throw new ApiError(body || res.statusText, res.status);
+    return body as unknown as T;
+  }
 
   const data = await res.json().catch(() => ({}));
 
@@ -57,10 +108,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new ApiError(message || 'Request failed', res.status);
   }
 
-  return data as T;
+  return stripSecrets(data) as T;
 }
 
 export const api = {
+  /* ---------------------------------------------------------------- Auth */
+
   login: (email: string, password: string) =>
     request<AuthResponse>('/auth/login', {
       method: 'POST',
@@ -68,41 +121,49 @@ export const api = {
       auth: false,
     }),
 
-  register: (payload: {
-    name: string;
-    email: string;
-    password: string;
-    role?: string;
-  }) =>
-    request<AuthResponse>('/users/register', {
-      method: 'POST',
-      body: payload,
-      auth: false,
-    }),
+  /** Stateless server-side — clearing the stored token is the client's job. */
+  logout: () => request<MessageResponse>('/auth/logout', { method: 'POST' }),
 
   refreshToken: () =>
     request<{ accessToken: string }>('/auth/refresh-token', {
       method: 'POST',
       body: { refreshToken: getRefreshToken() },
       auth: false,
+      skipRefresh: true,
     }),
 
-  logout: () => request<{ message: string }>('/auth/logout', { method: 'POST' }),
-
   changePassword: (currentPassword: string, newPassword: string) =>
-    request<{ message: string }>('/auth/change-password', {
+    request<MessageResponse>('/auth/change-password', {
       method: 'POST',
       body: { currentPassword, newPassword },
     }),
 
+  /* --------------------------------------------------------------- Users */
+
+  register: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    /** `ADMIN` additionally requires an admin bearer token on the request. */
+    role?: Role;
+    phone?: string;
+    address?: string;
+  }) =>
+    // Public route, but the bearer token rides along when one is stored: an
+    // admin creating an ADMIN account is only authorised with it attached.
+    request<AuthResponse>('/users/register', { method: 'POST', body: payload }),
+
   getMe: () => request<User>('/users/me'),
+
+  updateProfile: (
+    payload: Partial<
+      Pick<User, 'name' | 'phone' | 'address' | 'picture' | 'nidNumber'>
+    >,
+  ) => request<User>('/users/update-profile', { method: 'PATCH', body: payload }),
 
   getAllUsers: () => request<User[]>('/users/all-users'),
 
   getUser: (id: string) => request<User>(`/users/${id}`),
-
-  updateProfile: (payload: Partial<User>) =>
-    request<User>('/users/update-profile', { method: 'PATCH', body: payload }),
 
   blockUser: (userId: string) =>
     request<User>(`/users/${userId}/block`, { method: 'PATCH' }),
@@ -110,10 +171,13 @@ export const api = {
   unblockUser: (userId: string) =>
     request<User>(`/users/${userId}/unblock`, { method: 'PATCH' }),
 
-  getDashboard: () => request<DashboardStats>('/dashboard'),
+  /* ------------------------------------------------------------- Parcels */
 
+  /** Public tracking route — takes the tracking code, not the uuid. */
   getParcel: (trackingId: string) =>
-    request<Parcel>(`/parcels/${trackingId}`, { auth: false }),
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}`, {
+      auth: false,
+    }),
 
   getAllParcels: () => request<Parcel[]>('/parcels'),
 
@@ -132,39 +196,87 @@ export const api = {
     description?: string;
   }) => request<Parcel>('/parcels', { method: 'POST', body: payload }),
 
-  updateParcelStatus: (
-    trackingId: string,
-    status: string,
-    note?: string,
-  ) =>
-    request<Parcel>(`/parcels/${trackingId}/status`, {
+  updateParcelStatus: (trackingId: string, status: ParcelStatus, note?: string) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/status`, {
       method: 'PATCH',
-      body: { status, note },
+      body: note ? { status, note } : { status },
     }),
 
   cancelParcel: (trackingId: string) =>
-    request<Parcel>(`/parcels/${trackingId}/cancel`, { method: 'PATCH' }),
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/cancel`, {
+      method: 'PATCH',
+    }),
 
   confirmParcel: (trackingId: string) =>
-    request<Parcel>(`/parcels/${trackingId}/confirm`, { method: 'PATCH' }),
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/confirm`, {
+      method: 'PATCH',
+    }),
 
   blockParcel: (trackingId: string) =>
-    request<Parcel>(`/parcels/${trackingId}/block`, { method: 'PATCH' }),
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/block`, {
+      method: 'PATCH',
+    }),
 
-  askRag: (question: string, filter: string = 'parcel') =>
-    request<{
-      answer: string;
-      sources: Array<{ type: string; source: string; page: number | null }>;
-    }>('/rag/ask', {
+  /* ----------------------------------------------------------- Dashboard */
+
+  getDashboard: () => request<DashboardStats>('/dashboard'),
+
+  /* ----------------------------------------------------------------- RAG */
+
+  askRag: (question: string, filter = 'parcel') =>
+    request<RagAnswer>('/rag/ask', {
       method: 'POST',
       body: { question, filter },
       auth: false,
     }),
+
+  uploadRagPdf: (file: File, category?: string) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (category) form.append('category', category);
+    return request<{ message: string; filename: string; chunksIndexed: number }>(
+      '/rag/pdf/upload',
+      { method: 'POST', body: form, auth: false },
+    );
+  },
+
+  deleteRagPdf: (source: string) =>
+    request<MessageResponse>(`/rag/pdf/${encodeURIComponent(source)}`, {
+      method: 'DELETE',
+      auth: false,
+    }),
+
+  indexParcel: (parcelId: string) =>
+    request<MessageResponse>('/rag/index/parcel', {
+      method: 'POST',
+      body: { parcelId },
+      auth: false,
+    }),
+
+  indexAllParcels: () =>
+    request<MessageResponse>('/rag/index/bulk', {
+      method: 'POST',
+      body: {},
+      auth: false,
+    }),
+
+  removeIndexedParcel: (id: string) =>
+    request<MessageResponse>(`/rag/index/parcel/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      auth: false,
+    }),
+
+  /* -------------------------------------------------------------- System */
+
+  /** `GET /api` — plain-text health probe. */
+  health: () => request<string>('', { auth: false, text: true }),
 };
 
+/** Swaps the stored refresh token for a fresh access token. */
 export async function refreshAccessToken(): Promise<string | null> {
   try {
     const { accessToken } = await api.refreshToken();
+    if (!accessToken) return null;
     const user = getStoredUser();
     const refresh = getRefreshToken();
     if (user && refresh) setAuth(accessToken, refresh, user);
@@ -172,5 +284,16 @@ export async function refreshAccessToken(): Promise<string | null> {
   } catch {
     clearAuth();
     return null;
+  }
+}
+
+/** Clears local credentials even if the (stateless) server call fails. */
+export async function logout(): Promise<void> {
+  try {
+    await api.logout();
+  } catch {
+    // The token is discarded locally either way.
+  } finally {
+    clearAuth();
   }
 }
