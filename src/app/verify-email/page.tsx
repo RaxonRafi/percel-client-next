@@ -65,7 +65,7 @@ function VerifyContent() {
       <>
         <h1 className="font-display mb-2 text-2xl font-bold">Email confirmed</h1>
         <p className="mb-6 text-sm text-ink-2">{message}</p>
-        <Button asChild className="w-full">
+        <Button asChild size="lg" className="w-full">
           <Link href="/login">Sign in</Link>
         </Button>
       </>
@@ -99,7 +99,7 @@ function VerifyContent() {
               required
             />
           </div>
-          <Button type="submit" className="w-full" disabled={busy}>
+          <Button type="submit" size="lg" className="w-full" disabled={busy}>
             {busy ? 'Sending…' : 'Send a new link'}
           </Button>
         </form>

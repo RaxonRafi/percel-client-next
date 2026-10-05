@@ -65,10 +65,10 @@ export default function KnowledgePage() {
   if (user && user.role !== 'ADMIN') {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-center">
-        <div className="bg-slate-900/50 p-8 rounded-lg border border-slate-800">
-          <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-slate-300 font-mono tracking-wider uppercase mb-2">Restricted Area</h2>
-          <p className="text-slate-500 font-mono text-sm max-w-md">Only system administrators can manage the AI knowledge base and core indices.</p>
+        <div className="bg-surface p-8 rounded-xl border border-surface-3">
+          <ShieldAlert className="h-12 w-12 text-rose-600 mx-auto mb-4" />
+          <h2 className="text-lg font-bold text-ink-2 tracking-wider uppercase mb-2">Restricted Area</h2>
+          <p className="text-ink-3 text-sm max-w-md">Only system administrators can manage the AI knowledge base and core indices.</p>
         </div>
       </div>
     );
@@ -77,67 +77,67 @@ export default function KnowledgePage() {
   return (
     <div className="space-y-6 animate-fade-in relative max-w-5xl">
       {(error || msg) && (
-        <div className={`p-3 rounded-lg border text-sm font-mono ${error ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+        <div className={`p-3 rounded-xl border text-sm ${error ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
           {error || msg}
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 flex items-center gap-2">
-            <Database className="h-5 w-5 text-cyan-500" />
+          <h1 className="text-xl font-bold text-ink flex items-center gap-2">
+            <Database className="h-5 w-5 text-accent" />
             Knowledge Base
           </h1>
-          <p className="text-slate-500 text-[13px] mt-1 font-mono tracking-wide">AI EMBEDDINGS & SEARCH INDICES</p>
+          <p className="text-ink-3 text-[13px] mt-1 tracking-wide">AI EMBEDDINGS & SEARCH INDICES</p>
         </div>
         
-        <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded px-3 py-1.5">
-          <Activity className={`h-4 w-4 ${health === 'unreachable' ? 'text-rose-500' : 'text-emerald-500'}`} />
-          <span className="text-[10px] font-mono tracking-wider text-slate-400 uppercase">API Status:</span>
-          <span className={`text-[10px] font-bold font-mono tracking-wider uppercase ${health === 'unreachable' ? 'text-rose-500' : 'text-emerald-500'}`}>
+        <div className="flex items-center gap-2 bg-white border border-surface-3 rounded-md px-3 py-1.5">
+          <Activity className={`h-4 w-4 ${health === 'unreachable' ? 'text-rose-600' : 'text-emerald-600'}`} />
+          <span className="text-[10px] tracking-wider text-ink-2 uppercase">API Status:</span>
+          <span className={`text-[10px] font-bold tracking-wider uppercase ${health === 'unreachable' ? 'text-rose-600' : 'text-emerald-600'}`}>
             {health || 'CHECKING...'}
           </span>
         </div>
       </div>
 
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 flex gap-3 items-start">
-        <ShieldAlert className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-        <div className="text-sm text-amber-500/80 leading-relaxed">
-          <strong className="text-amber-500">ADMINISTRATIVE NOTICE:</strong> These tools modify global search indices. Indexing and deletions change what the assistant can cite for every user across the platform. AI routes are rate-limited to 20 requests per minute.
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 items-start">
+        <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="text-sm text-amber-600 leading-relaxed">
+          <strong className="text-amber-600">ADMINISTRATIVE NOTICE:</strong> These tools modify global search indices. Indexing and deletions change what the assistant can cite for every user across the platform. AI routes are rate-limited to 20 requests per minute.
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden h-full flex flex-col">
-            <div className="p-5 border-b border-slate-800/60 bg-slate-900/50 flex items-center gap-2">
-              <UploadCloud className="h-4 w-4 text-cyan-500" />
-              <h3 className="text-[13px] font-bold text-slate-300 uppercase tracking-wider">Ingest Document</h3>
+          <div className="bg-white border border-surface-3 rounded-xl shadow-sm overflow-hidden h-full flex flex-col">
+            <div className="p-5 border-b border-surface-2 bg-surface flex items-center gap-2">
+              <UploadCloud className="h-4 w-4 text-accent" />
+              <h3 className="text-[13px] font-bold text-ink-2 uppercase tracking-wider">Ingest Document</h3>
             </div>
             
             <form onSubmit={uploadPdf} className="p-5 flex flex-col gap-5 flex-1">
               <div className="space-y-1.5">
-                <label htmlFor="pdf" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Target File (PDF ONLY, MAX 10MB)</label>
+                <label htmlFor="pdf" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Target File (PDF ONLY, MAX 10MB)</label>
                 <div className="relative">
                   <input
                     id="pdf"
                     ref={fileInput}
                     type="file"
                     accept="application/pdf"
-                    className="block w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-bold file:uppercase file:tracking-wider file:bg-slate-800 file:text-cyan-400 hover:file:bg-slate-700 cursor-pointer border border-slate-700 rounded bg-slate-950 focus:outline-none"
+                    className="block w-full text-sm text-ink-2 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-bold file:uppercase file:tracking-wider file:bg-surface-2 file:text-accent hover:file:bg-surface-3 cursor-pointer border border-surface-3 rounded-md bg-white focus:outline-none"
                   />
                 </div>
               </div>
               
               <div className="space-y-1.5">
-                <label htmlFor="category" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Metadata Tag (Optional)</label>
+                <label htmlFor="category" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Metadata Tag (Optional)</label>
                 <input
                   id="category"
                   type="text"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   placeholder="e.g. shipping, legal, hr"
-                  className="w-full h-10 px-3 rounded border border-slate-700 bg-slate-950 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono"
+                  className="w-full h-10 px-3 rounded-md border border-surface-3 bg-white text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
                 />
               </div>
               
@@ -151,15 +151,15 @@ export default function KnowledgePage() {
         </div>
         
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
-            <div className="p-5 border-b border-slate-800/60 bg-slate-900/50 flex items-center gap-2">
-              <Trash2 className="h-4 w-4 text-rose-500" />
-              <h3 className="text-[13px] font-bold text-slate-300 uppercase tracking-wider">Remove Document</h3>
+          <div className="bg-white border border-surface-3 rounded-xl shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-surface-2 bg-surface flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-rose-600" />
+              <h3 className="text-[13px] font-bold text-ink-2 uppercase tracking-wider">Remove Document</h3>
             </div>
             
             <div className="p-5">
               <div className="space-y-1.5 mb-4">
-                <label htmlFor="source" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Source Identifier</label>
+                <label htmlFor="source" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Source Identifier</label>
                 <div className="flex gap-2">
                   <input
                     id="source"
@@ -167,11 +167,11 @@ export default function KnowledgePage() {
                     value={deleteSource}
                     onChange={(e) => setDeleteSource(e.target.value)}
                     placeholder="e.g. shipping-policy.pdf"
-                    className="flex-1 h-10 px-3 rounded border border-slate-700 bg-slate-950 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono"
+                    className="flex-1 h-10 px-3 rounded-md border border-surface-3 bg-white text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
                   />
                   <Button
                     variant="ghost"
-                    className="bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 hover:text-rose-400 border border-rose-500/20"
+                    className="bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-600 border border-rose-200"
                     disabled={busy || !deleteSource.trim()}
                     onClick={() => run(() => api.deleteRagPdf(deleteSource.trim()), 'PDF removed')}
                   >
@@ -179,21 +179,21 @@ export default function KnowledgePage() {
                   </Button>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-500 font-mono leading-relaxed">
-                The source name is the <span className="text-slate-400 font-bold">source</span> value the chat assistant cites under an answer.
+              <p className="text-[11px] text-ink-3 leading-relaxed">
+                The source name is the <span className="text-ink-2 font-bold">source</span> value the chat assistant cites under an answer.
               </p>
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
-            <div className="p-5 border-b border-slate-800/60 bg-slate-900/50 flex items-center gap-2">
-              <Search className="h-4 w-4 text-emerald-500" />
-              <h3 className="text-[13px] font-bold text-slate-300 uppercase tracking-wider">Parcel Indexing</h3>
+          <div className="bg-white border border-surface-3 rounded-xl shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-surface-2 bg-surface flex items-center gap-2">
+              <Search className="h-4 w-4 text-emerald-600" />
+              <h3 className="text-[13px] font-bold text-ink-2 uppercase tracking-wider">Parcel Indexing</h3>
             </div>
             
             <div className="p-5 space-y-5">
               <div className="space-y-1.5">
-                <label htmlFor="parcelId" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Target Parcel ID</label>
+                <label htmlFor="parcelId" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Target Parcel ID</label>
                 <div className="flex gap-2">
                   <input
                     id="parcelId"
@@ -201,7 +201,7 @@ export default function KnowledgePage() {
                     value={parcelId}
                     onChange={(e) => setParcelId(e.target.value)}
                     placeholder="UUID"
-                    className="flex-1 h-10 px-3 rounded border border-slate-700 bg-slate-950 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono"
+                    className="flex-1 h-10 px-3 rounded-md border border-surface-3 bg-white text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
                   />
                   <Button
                     variant="secondary"
@@ -214,7 +214,7 @@ export default function KnowledgePage() {
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="removeId" className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Remove Parcel ID</label>
+                <label htmlFor="removeId" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Remove Parcel ID</label>
                 <div className="flex gap-2">
                   <input
                     id="removeId"
@@ -222,11 +222,11 @@ export default function KnowledgePage() {
                     value={removeId}
                     onChange={(e) => setRemoveId(e.target.value)}
                     placeholder="UUID"
-                    className="flex-1 h-10 px-3 rounded border border-slate-700 bg-slate-950 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono"
+                    className="flex-1 h-10 px-3 rounded-md border border-surface-3 bg-white text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
                   />
                   <Button
                     variant="ghost"
-                    className="bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 hover:text-rose-400 border border-rose-500/20"
+                    className="bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-600 border border-rose-200"
                     disabled={busy || !removeId.trim()}
                     onClick={() => run(() => api.removeIndexedParcel(removeId.trim()), 'Parcel removed from index')}
                   >
@@ -235,14 +235,14 @@ export default function KnowledgePage() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-800/60">
+              <div className="pt-4 border-t border-surface-2">
                 <Button
                   variant="ghost"
-                  className="w-full bg-slate-800/50 text-slate-300 hover:bg-slate-800 border border-slate-700"
+                  className="w-full bg-surface-2 text-ink-2 hover:bg-surface-2 border border-surface-3"
                   disabled={busy}
                   onClick={() => run(() => api.indexAllParcels(), 'Bulk index started')}
                 >
-                  <Settings className="h-4 w-4 mr-2 text-slate-400" /> Trigger Full Database Re-Index
+                  <Settings className="h-4 w-4 mr-2 text-ink-2" /> Trigger Full Database Re-Index
                 </Button>
               </div>
             </div>

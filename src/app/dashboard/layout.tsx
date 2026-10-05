@@ -61,9 +61,12 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
 const TITLES: Record<string, string> = {
   '/dashboard': 'Overview',
   '/dashboard/parcels': 'Shipments',
+  '/dashboard/parcels/new': 'New shipment',
   '/dashboard/deliveries': 'My deliveries',
   '/dashboard/users': 'Customers',
+  '/dashboard/users/new': 'New account',
   '/dashboard/couriers': 'Delivery partners',
+  '/dashboard/couriers/applications': 'Courier applications',
   '/dashboard/analytics': 'Analytics',
   '/dashboard/audit': 'System Audit Logs',
   '/dashboard/knowledge': 'AI knowledge base',
@@ -102,7 +105,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   // while `/users/me` verifies alongside them.
   if (status === 'initializing') {
     return (
-      <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: 'var(--ink3)' }}>
+      <div className="grid min-h-screen place-items-center bg-surface text-sm text-ink-3">
         Loading your dashboard…
       </div>
     );
@@ -110,7 +113,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: 'var(--ink3)' }}>
+      <div className="grid min-h-screen place-items-center bg-surface text-sm text-ink-3">
         Redirecting to sign in…
       </div>
     );
@@ -119,40 +122,42 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
   const visible = (item: NavItem) => !item.roles || item.roles.includes(user.role);
 
   return (
-    <div id="app" className="min-h-screen bg-slate-950 text-slate-300 font-sans text-sm selection:bg-cyan-500/30 selection:text-cyan-100 flex">
-      {/* Fixed Narrow Sidebar */}
-      <aside className="w-60 bg-slate-950 border-r border-slate-800/60 flex flex-col flex-shrink-0 h-screen sticky top-0 z-50">
-        <Link href="/dashboard" className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-3 hover:bg-slate-900/50 transition-colors">
-          <div className="w-8 h-8 rounded bg-slate-900 border border-slate-700/50 flex items-center justify-center text-cyan-400">
-            <IconPackage size={18} />
+    <div id="app" className="flex min-h-screen bg-surface font-sans text-sm text-ink-2 selection:bg-accent/20 selection:text-ink">
+      <aside className="sticky top-0 z-50 flex h-screen w-60 flex-shrink-0 flex-col border-r border-surface-3 bg-white">
+        <Link href="/dashboard" className="flex h-16 items-center gap-3 border-b border-surface-3 px-5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-white">
+            <IconPackage size={20} />
           </div>
-          <div className="font-display font-bold text-slate-200 tracking-wide text-base">
-            Parcel<span className="text-cyan-500">Payout</span>
+          <div className="font-display text-lg font-bold text-ink">
+            Parcel <span className="text-accent">Payout</span>
           </div>
         </Link>
 
-        <nav className="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1 custom-scrollbar">
+        <nav className="custom-scrollbar flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
           {SECTIONS.map((section) => {
             const items = section.items.filter(visible);
             if (items.length === 0) return null;
             return (
               <React.Fragment key={section.label}>
-                <div className="text-[10px] font-bold tracking-[0.15em] text-slate-500 uppercase mt-4 mb-2 px-2">
+                <div className="mb-1 mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-ink-3 first:mt-0">
                   {section.label}
                 </div>
                 {items.map((item) => {
-                  const isActive = pathname === item.href;
+                  // Nested routes (e.g. /parcels/new) keep their section highlighted.
+                  const isActive =
+                    pathname === item.href ||
+                    (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-[13px] font-medium border border-transparent ${
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                         isActive
-                          ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
-                          : 'text-slate-400 hover:bg-slate-900/80 hover:text-slate-200'
+                          ? 'bg-accent-bg font-semibold text-accent'
+                          : 'font-medium text-ink-2 hover:bg-surface-2 hover:text-ink'
                       }`}
                     >
-                      <item.icon size={18} className={isActive ? 'text-cyan-400' : 'text-slate-500'} /> 
+                      <item.icon size={18} className={isActive ? 'text-accent' : 'text-ink-3'} />
                       {item.label}
                     </Link>
                   );
@@ -162,14 +167,14 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-800/60 bg-slate-950">
-          <div className="flex items-center gap-3 p-2 rounded-md hover:bg-slate-900/80 transition-colors cursor-pointer border border-transparent hover:border-slate-800">
-            <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+        <div className="border-t border-surface-3 p-3">
+          <div className="flex items-center gap-3 rounded-lg p-2">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">
               {initials(user.name)}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-slate-200 truncate">{user.name}</div>
-              <div className="text-[11px] text-slate-500 truncate">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-ink">{user.name}</div>
+              <div className="truncate text-xs text-ink-3">
                 {user.role.charAt(0) + user.role.slice(1).toLowerCase().replace('_', ' ')}
               </div>
             </div>
@@ -177,7 +182,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               type="button"
               onClick={handleLogout}
               title="Sign out"
-              className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+              className="rounded-md p-1.5 text-ink-3 transition-colors hover:bg-rose-50 hover:text-rose-600"
             >
               <IconLogout size={16} />
             </button>
@@ -186,41 +191,39 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/60 sticky top-0 z-40 flex items-center justify-between px-6">
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-surface-3 bg-white/90 px-6 backdrop-blur-md">
           <div>
-            <div className="text-sm font-bold text-slate-200">{TITLES[pathname] ?? 'Dashboard'}</div>
-            <div className="text-[11px] text-slate-500 font-mono tracking-wider">
+            <div className="font-display text-base font-semibold text-ink">{TITLES[pathname] ?? 'Dashboard'}</div>
+            <div className="text-xs text-ink-3">
               {new Date().toLocaleDateString('en-US', {
-                weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-              }).toUpperCase()}
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+              })}
             </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="relative group">
-              <IconSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-500 transition-colors" />
-              <input 
-                type="text" 
-                placeholder="Search resources..." 
-                className="w-64 h-8 bg-slate-900 border border-slate-800 rounded-md pl-9 pr-3 text-[13px] text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all font-mono"
+
+          <div className="flex items-center gap-3">
+            <div className="group relative hidden md:block">
+              <IconSearch size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 transition-colors group-focus-within:text-accent" />
+              <input
+                type="text"
+                placeholder="Search resources..."
+                className="h-9 w-64 rounded-lg border border-surface-3 bg-surface pl-9 pr-3 text-sm text-ink transition-colors placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
-            
-            <div className="h-4 w-px bg-slate-800" />
-            
-            <button className="relative text-slate-500 hover:text-slate-300 transition-colors">
+
+            <button className="relative flex h-9 w-9 items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink">
               <IconBell size={18} />
-              <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-cyan-500 border border-slate-950" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent ring-2 ring-white" />
             </button>
-            
-            <Link href="/" className="h-8 px-3 flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-md text-[12px] font-medium text-slate-300 transition-colors">
-              <IconArrowLeft size={14} /> Site
+
+            <Link href="/" className="flex h-9 items-center gap-2 rounded-lg border border-surface-3 bg-white px-3 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink">
+              <IconArrowLeft size={16} /> Site
             </Link>
           </div>
         </header>
 
-        <main className="flex-1 p-6 overflow-x-hidden">
+        <main className="flex-1 overflow-x-hidden p-6">
           {children}
         </main>
       </div>

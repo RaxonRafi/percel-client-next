@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
               If an account exists for <strong>{email}</strong>, a reset link is on its
               way. The link works once and expires after 30 minutes.
             </p>
-            <Button asChild className="w-full">
+            <Button asChild size="lg" className="w-full">
               <Link href="/login">Back to sign in</Link>
             </Button>
           </>
@@ -65,8 +65,8 @@ export default function ForgotPasswordPage() {
                   required
                 />
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading}>
+              {error && <p className="text-sm text-rose-600">{error}</p>}
+              <Button type="submit" size="lg" className="w-full" disabled={loading}>
                 {loading ? 'Sending…' : 'Send reset link'}
               </Button>
             </form>

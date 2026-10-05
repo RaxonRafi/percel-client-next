@@ -4,21 +4,21 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 outline-none focus:ring-2 focus:ring-cyan-500/50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-accent/30',
   {
     variants: {
       variant: {
-        default: 'bg-cyan-500 text-slate-950 hover:bg-cyan-400 font-bold',
+        default: 'bg-accent text-white hover:bg-accent-2',
         secondary:
-          'border border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800',
-        ghost: 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-200',
-        dark: 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700',
+          'border border-surface-3 bg-white text-ink-2 hover:bg-surface-2 hover:text-ink',
+        ghost: 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+        dark: 'bg-ink text-white hover:bg-ink-2',
       },
       size: {
         default: 'h-9 px-6',
-        sm: 'h-8 px-4 text-[11px] uppercase tracking-wider',
-        lg: 'h-11 px-8 text-[13px]',
-        icon: 'h-9 w-9 rounded-md',
+        sm: 'h-8 px-3 text-xs',
+        lg: 'h-11 px-8',
+        icon: 'h-9 w-9',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

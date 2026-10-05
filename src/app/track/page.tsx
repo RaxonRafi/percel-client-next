@@ -59,11 +59,11 @@ function TrackContent() {
           onChange={(e) => setTrackingId(e.target.value)}
           required
         />
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" size="lg" className="px-4" aria-label="Track" disabled={loading}>
           <Search className="h-4 w-4" />
         </Button>
       </form>
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-4 text-sm text-rose-600">{error}</p>}
       {parcel && (
         <div className="mt-6 space-y-4 border-t border-surface-2 pt-6">
           <div className="flex items-center justify-between">
@@ -88,7 +88,7 @@ function TrackContent() {
             <p className="text-sm text-ink-3">{parcel.description}</p>
           )}
           {parcel.isBlocked && (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-rose-600">
               This parcel is on hold. Contact support for details.
             </p>
           )}

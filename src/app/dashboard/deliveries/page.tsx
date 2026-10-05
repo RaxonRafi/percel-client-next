@@ -66,10 +66,10 @@ export default function DeliveriesPage() {
   if (user && user.role !== 'DELIVERY_PERSONNEL') {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-center">
-        <div className="bg-slate-900/50 p-8 rounded-lg border border-slate-800">
-          <Truck className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-slate-300 font-mono tracking-wider uppercase mb-2">Delivery Portal</h2>
-          <p className="text-slate-500 font-mono text-sm max-w-md">
+        <div className="bg-surface p-8 rounded-xl border border-surface-3">
+          <Truck className="h-12 w-12 text-ink-3 mx-auto mb-4" />
+          <h2 className="text-lg font-bold text-ink-2 tracking-wider uppercase mb-2">Delivery Portal</h2>
+          <p className="text-ink-3 text-sm max-w-md">
             {user.role === 'PENDING_DELIVERY'
               ? 'Your delivery partner application is still under review.'
               : 'This page is for approved delivery partners only.'}
@@ -82,31 +82,31 @@ export default function DeliveriesPage() {
   return (
     <div className="space-y-6 animate-fade-in relative">
       {(error || msg) && (
-        <div className={`p-3 rounded-lg border text-sm font-mono ${error ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+        <div className={`p-3 rounded-xl border text-sm ${error ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
           {error || msg}
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-200 flex items-center gap-2">
-            <Truck className="h-5 w-5 text-cyan-500" />
+          <h1 className="text-xl font-bold text-ink flex items-center gap-2">
+            <Truck className="h-5 w-5 text-accent" />
             My Deliveries
           </h1>
-          <p className="text-slate-500 text-[13px] mt-1 font-mono tracking-wide">YOUR ASSIGNED ROUTES AND MANIFEST</p>
+          <p className="text-ink-3 text-[13px] mt-1 tracking-wide">YOUR ASSIGNED ROUTES AND MANIFEST</p>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col h-full">
-            <div className="p-5 border-b border-slate-800/60 bg-slate-900/50 flex justify-between items-center">
+      <div className="space-y-6">
+        <div className="space-y-6">
+          <div className="bg-white border border-surface-3 rounded-xl shadow-sm flex flex-col h-full">
+            <div className="p-5 border-b border-surface-2 bg-surface flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-cyan-500" />
-                <h2 className="text-[13px] font-bold text-slate-300 uppercase tracking-wider">Active Queue</h2>
+                <Package className="h-4 w-4 text-accent" />
+                <h2 className="text-[13px] font-bold text-ink-2 uppercase tracking-wider">Active Queue</h2>
               </div>
-              <div className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
-                (queueMeta?.total ?? queue.length) > 0 ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-slate-800 text-slate-400 border border-slate-700'
+              <div className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                (queueMeta?.total ?? queue.length) > 0 ? 'bg-accent-bg text-accent border border-accent/20' : 'bg-surface-2 text-ink-2 border border-surface-3'
               }`}>
                 {queueMeta?.total ?? queue.length} ASSIGNED
               </div>
@@ -116,65 +116,65 @@ export default function DeliveriesPage() {
               {queue.map((p) => {
                 const draft = drafts[p.id] ?? { status: p.status, note: '' };
                 return (
-                  <div key={p.id} className="rounded-lg border border-slate-800 bg-slate-950 p-4 transition-all hover:border-slate-700">
-                    <div className="mb-4 flex flex-wrap items-start justify-between gap-2 border-b border-slate-800 pb-3">
+                  <div key={p.id} className="rounded-xl border border-surface-3 bg-white p-4 transition-all hover:border-surface-3">
+                    <div className="mb-4 flex flex-wrap items-start justify-between gap-2 border-b border-surface-3 pb-3">
                       <div>
-                        <p className="font-bold font-mono text-cyan-400 tracking-wider text-sm">{p.trackingId}</p>
-                        <p className="text-[11px] text-slate-500 font-mono mt-0.5">UPDATED {formatDate(p.updatedAt).toUpperCase()}</p>
+                        <p className="font-bold text-accent tracking-wider text-sm">{p.trackingId}</p>
+                        <p className="text-[11px] text-ink-3 mt-0.5">UPDATED {formatDate(p.updatedAt).toUpperCase()}</p>
                       </div>
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase border ${
-                        ['PENDING', 'ACCEPTED'].includes(p.status) ? 'bg-slate-800 text-slate-300 border-slate-700' :
-                        'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                        ['PENDING', 'ACCEPTED'].includes(p.status) ? 'bg-surface-2 text-ink-2 border-surface-3' :
+                        'bg-accent-bg text-accent border-accent/20'
                       }`}>
                         {formatStatus(p.status)}
                       </span>
                     </div>
 
                     <div className="mb-4 grid gap-4 text-[13px] md:grid-cols-2">
-                      <div className="bg-slate-900/50 p-3 rounded border border-slate-800/60 relative">
-                        <div className="absolute top-3 right-3 text-slate-600"><MapPin size={14} /></div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Pick Up</p>
-                        <p className="font-mono text-slate-300 leading-relaxed mb-2">{p.pickupAddress}</p>
-                        <p className="text-[11px] font-sans text-slate-400">
+                      <div className="bg-surface p-3 rounded-md border border-surface-2 relative">
+                        <div className="absolute top-3 right-3 text-ink-3"><MapPin size={14} /></div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-3 mb-1">Pick Up</p>
+                        <p className="text-ink-2 leading-relaxed mb-2">{p.pickupAddress}</p>
+                        <p className="text-[11px] font-sans text-ink-2">
                           {p.senderName}{p.senderPhone ? ` · ${p.senderPhone}` : ''}
                         </p>
                       </div>
-                      <div className="bg-slate-900/50 p-3 rounded border border-slate-800/60 relative">
-                        <div className="absolute top-3 right-3 text-cyan-700"><MapPin size={14} /></div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-500/70 mb-1">Deliver To</p>
-                        <p className="font-mono text-slate-300 leading-relaxed mb-2">{p.deliveryAddress}</p>
-                        <p className="text-[11px] font-sans text-slate-400">
+                      <div className="bg-surface p-3 rounded-md border border-surface-2 relative">
+                        <div className="absolute top-3 right-3 text-accent"><MapPin size={14} /></div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-1">Deliver To</p>
+                        <p className="text-ink-2 leading-relaxed mb-2">{p.deliveryAddress}</p>
+                        <p className="text-[11px] font-sans text-ink-2">
                           {p.receiverName}{p.receiverPhone ? ` · ${p.receiverPhone}` : ''}
                         </p>
                       </div>
                     </div>
 
                     {p.description && (
-                      <p className="mb-4 text-[12px] font-mono text-slate-400 bg-slate-900/30 p-2 rounded border-l-2 border-slate-700">
-                        <span className="text-slate-500 uppercase tracking-wider text-[10px] mr-2">Note:</span> 
+                      <p className="mb-4 text-[12px] text-ink-2 bg-surface p-2 rounded-md border-l-2 border-surface-3">
+                        <span className="text-ink-3 uppercase tracking-wider text-[10px] mr-2">Note:</span> 
                         {p.description}
                       </p>
                     )}
 
-                    <div className="mb-4 flex flex-wrap gap-4 text-[11px] font-mono uppercase tracking-wider">
-                      <span className="text-slate-500">
-                        Weight <span className="text-slate-300 font-bold ml-1">{p.weightKg} kg</span>
+                    <div className="mb-4 flex flex-wrap gap-4 text-[11px] uppercase tracking-wider">
+                      <span className="text-ink-3">
+                        Weight <span className="text-ink-2 font-bold ml-1">{p.weightKg} kg</span>
                       </span>
-                      <span className="text-slate-500">
-                        Fee <span className="text-slate-300 font-bold ml-1">{formatMoney(p.deliveryFee)}</span>
+                      <span className="text-ink-3">
+                        Fee <span className="text-ink-2 font-bold ml-1">{formatMoney(p.deliveryFee)}</span>
                       </span>
                       {p.codAmount > 0 ? (
-                        <span className="font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                        <span className="font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
                           Collect {formatMoney(p.codAmount)}
                         </span>
                       ) : (
-                        <span className="text-slate-500 font-bold px-2 py-0.5 rounded border border-slate-800 bg-slate-900">Prepaid</span>
+                        <span className="text-ink-3 font-bold px-2 py-0.5 rounded-md border border-surface-3 bg-white">Prepaid</span>
                       )}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-800">
+                    <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-surface-3">
                       <select
-                        className="h-9 rounded border border-slate-800 bg-slate-900 px-3 text-[11px] font-bold tracking-wider uppercase text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none"
+                        className="h-9 rounded-md border border-surface-3 bg-white px-3 text-[11px] font-bold tracking-wider uppercase text-ink-2 focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none"
                         value={draft.status}
                         disabled={isTerminal(p.status)}
                         onChange={(e) =>
@@ -192,7 +192,7 @@ export default function DeliveriesPage() {
                           ))}
                       </select>
                       <input
-                        className="h-9 flex-1 min-w-[120px] rounded border border-slate-800 bg-slate-900 px-3 text-[13px] text-slate-300 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 outline-none placeholder:text-slate-600 font-mono"
+                        className="h-9 flex-1 min-w-[120px] rounded-md border border-surface-3 bg-white px-3 text-[13px] text-ink-2 focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none placeholder:text-ink-3"
                         placeholder="Status Note (optional)"
                         value={draft.note}
                         onChange={(e) =>
@@ -233,12 +233,12 @@ export default function DeliveriesPage() {
                 );
               })}
               {queue.length === 0 && (
-                <p className="py-12 text-center text-slate-500 text-sm font-sans">Nothing assigned to you right now.</p>
+                <p className="py-12 text-center text-ink-3 text-sm font-sans">Nothing assigned to you right now.</p>
               )}
             </div>
             
             {queue.length > 0 && (
-              <div className="p-4 border-t border-slate-800/60 mt-auto">
+              <div className="px-5 pb-5 mt-auto">
                 <Pagination meta={queueMeta} onPage={setQueuePage} busy={busy} />
               </div>
             )}
@@ -246,54 +246,54 @@ export default function DeliveriesPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg flex flex-col h-full">
-            <div className="p-5 border-b border-slate-800/60 bg-slate-900/50 flex justify-between items-center">
+          <div className="bg-white border border-surface-3 rounded-xl shadow-sm flex flex-col h-full">
+            <div className="p-5 border-b border-surface-2 bg-surface flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-emerald-500" />
-                <h2 className="text-[13px] font-bold text-slate-300 uppercase tracking-wider">Completed</h2>
+                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                <h2 className="text-[13px] font-bold text-ink-2 uppercase tracking-wider">Completed</h2>
               </div>
-              <div className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <div className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200">
                 {doneMeta?.total ?? completed.length} DONE
               </div>
             </div>
             
-            <div className="overflow-x-auto custom-scrollbar flex-1">
+            <div className="m-5 overflow-x-auto rounded-xl border border-surface-3 flex-1">
               <table className="w-full text-[13px] text-left">
-                <thead className="bg-slate-900/50 text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-800/60">
+                <thead className="bg-surface text-[11px] uppercase tracking-wider text-ink-3 border-b border-surface-3">
                   <tr>
-                    <th className="px-5 py-3 font-semibold">Delivery Details</th>
-                    <th className="px-5 py-3 font-semibold text-right">Status</th>
+                    <th className="px-5 py-3.5 font-semibold">Delivery Details</th>
+                    <th className="px-5 py-3.5 font-semibold text-right">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 font-mono">
+                <tbody className="divide-y divide-surface-3">
                   {completed.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-800/20 transition-colors align-top">
-                      <td className="px-5 py-3">
-                        <div className="font-bold text-cyan-400 font-sans mb-1">{p.trackingId}</div>
-                        <div className="text-[11px] text-slate-400 mb-1 leading-relaxed">
-                          <span className="text-slate-500 uppercase">To:</span> {p.receiverName} <br/>
-                          <span className="text-slate-600">{p.deliveryAddress}</span>
+                    <tr key={p.id} className="hover:bg-surface transition-colors align-top">
+                      <td className="px-5 py-4">
+                        <div className="font-bold text-accent font-sans mb-1">{p.trackingId}</div>
+                        <div className="text-[11px] text-ink-2 mb-1 leading-relaxed">
+                          <span className="text-ink-3 uppercase">To:</span> {p.receiverName} <br/>
+                          <span className="text-ink-3">{p.deliveryAddress}</span>
                         </div>
-                        <div className="text-[10px] text-slate-500 mt-2">
-                          <span className="uppercase">Received By:</span> <span className="text-slate-300">{p.receivedBy ?? '—'}</span>
+                        <div className="text-[10px] text-ink-3 mt-2">
+                          <span className="uppercase">Received By:</span> <span className="text-ink-2">{p.receivedBy ?? '—'}</span>
                         </div>
                         <div className="text-[10px] mt-1">
                           {p.codAmount > 0 ? (
-                            <span className={p.isCodCollected ? 'text-emerald-400 font-bold' : 'text-rose-500 font-bold'}>
+                            <span className={p.isCodCollected ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
                               {formatMoney(p.codAmount)}
                               {p.isCodCollected ? ' COLLECTED' : ' OUTSTANDING'}
                             </span>
                           ) : (
-                            <span className="text-slate-500 font-bold uppercase">Prepaid</span>
+                            <span className="text-ink-3 font-bold uppercase">Prepaid</span>
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-right">
+                      <td className="px-5 py-4 text-right">
                         <div className="flex flex-col items-end gap-2">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase border bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold border bg-emerald-50 text-emerald-600 border-emerald-200">
                             {formatStatus(p.status)}
                           </span>
-                          <span className="text-[10px] text-slate-500">
+                          <span className="text-[10px] text-ink-3">
                             {formatDate(p.deliveredAt ?? p.updatedAt).split(',')[0]}
                           </span>
                         </div>
@@ -302,7 +302,7 @@ export default function DeliveriesPage() {
                   ))}
                   {completed.length === 0 && (
                     <tr>
-                      <td colSpan={2} className="px-5 py-12 text-center text-slate-500 text-sm font-sans">
+                      <td colSpan={2} className="px-5 py-12 text-center text-ink-3 text-sm font-sans">
                         No completed deliveries yet.
                       </td>
                     </tr>
@@ -312,7 +312,7 @@ export default function DeliveriesPage() {
             </div>
             
             {completed.length > 0 && (
-              <div className="p-4 border-t border-slate-800/60 mt-auto">
+              <div className="px-5 pb-5 mt-auto">
                 <Pagination meta={doneMeta} onPage={setDonePage} busy={busy} />
               </div>
             )}

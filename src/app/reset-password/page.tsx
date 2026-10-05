@@ -52,7 +52,7 @@ function ResetForm() {
         <p className="mb-6 text-sm text-ink-2">
           Every session has been signed out. Taking you to the sign-in page…
         </p>
-        <Button asChild className="w-full">
+        <Button asChild size="lg" className="w-full">
           <Link href="/login">Sign in</Link>
         </Button>
       </>
@@ -98,8 +98,8 @@ function ResetForm() {
             required
           />
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading || !token.trim()}>
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+        <Button type="submit" size="lg" className="w-full" disabled={loading || !token.trim()}>
           {loading ? 'Updating…' : 'Update password'}
         </Button>
       </form>

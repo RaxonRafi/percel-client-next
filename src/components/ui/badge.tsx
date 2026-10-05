@@ -9,7 +9,7 @@ const badgeVariants = cva(
         transit: 'bg-blue-bg text-blue',
         delivered: 'bg-green-bg text-green',
         pending: 'bg-amber-bg text-amber',
-        failed: 'bg-red-100 text-red-800',
+        failed: 'bg-rose-50 text-rose-600',
         default: 'bg-surface-2 text-ink-2',
       },
     },

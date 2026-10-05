@@ -17,13 +17,13 @@ export function DashboardTopbar({ title }: { title: string }) {
         </p>
       </div>
       <div className="flex items-center gap-3">
-        <div className="hidden items-center gap-2 rounded-[var(--radius-md)] border border-surface-3 bg-surface px-3 py-2 text-sm text-ink-3 md:flex">
+        <div className="hidden items-center gap-2 rounded-lg border border-surface-3 bg-surface px-3 py-2 text-sm text-ink-3 md:flex">
           <Search className="h-4 w-4" />
           Search packages…
         </div>
         <button
           type="button"
-          className="relative flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] border border-surface-3 bg-surface"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-surface-3 bg-surface"
         >
           <Bell className="h-4 w-4 text-ink-2" />
           <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-accent ring-2 ring-white" />

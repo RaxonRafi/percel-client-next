@@ -5,34 +5,29 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/lib/api';
 import { Pagination } from '@/components/ui/pagination';
+import { formatDate } from '@/lib/parcel-utils';
 import { useAuth } from '@/lib/auth-context';
 import type { PageMeta, User } from '@/lib/types';
-import { Truck, Clock } from 'lucide-react';
+import { ArrowLeft, Clock, Truck } from 'lucide-react';
 
-export default function CouriersPage() {
+export default function CourierApplicationsPage() {
   const { user } = useAuth();
   const role = user?.role;
-  const [approved, setApproved] = useState<User[]>([]);
+  const [pending, setPending] = useState<User[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [pendingCount, setPendingCount] = useState(0);
   const [error, setError] = useState('');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [couriers, applicants] = await Promise.all([
-        api.getCouriers({ page, limit }),
-        // Only the total is shown here; the list lives on the applications page.
-        api.getPendingCouriers({ page: 1, limit: 1 }),
-      ]);
-      setApproved(couriers.data);
-      setMeta(couriers.meta);
-      setPendingCount(applicants.meta.total);
+      const applicants = await api.getPendingCouriers({ page, limit });
+      setPending(applicants.data);
+      setMeta(applicants.meta);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load delivery partners');
+      setError(e instanceof Error ? e.message : 'Failed to load applications');
     }
   }, [page, limit]);
 
@@ -75,26 +70,21 @@ export default function CouriersPage() {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-ink flex items-center gap-2">
-            <Truck className="h-5 w-5 text-accent" />
-            Courier Operations
-          </h1>
-          <p className="text-ink-3 text-[13px] mt-1">
-            {meta?.total ?? approved.length} approved couriers in the active fleet
-          </p>
-        </div>
-        <Button asChild variant="secondary">
-          <Link href="/dashboard/couriers/applications">
-            <Clock className="h-4 w-4" /> Applications
-            {pendingCount > 0 && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-600">
-                {pendingCount}
-              </span>
-            )}
-          </Link>
-        </Button>
+      <div>
+        <Link
+          href="/dashboard/couriers"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-3 transition-colors hover:text-ink"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to couriers
+        </Link>
+        <h1 className="mt-3 text-xl font-bold text-ink flex items-center gap-2">
+          <Clock className="h-5 w-5 text-accent" />
+          Courier Applications
+        </h1>
+        <p className="text-ink-3 text-[13px] mt-1 max-w-2xl">
+          Applicants cannot take assignments until approved. Rejecting reverts them to a
+          standard sender account so they can apply again later.
+        </p>
       </div>
 
       <div className="bg-white border border-surface-3 rounded-xl shadow-sm flex flex-col">
@@ -102,68 +92,47 @@ export default function CouriersPage() {
           <table className="w-full text-[13px] text-left">
             <thead className="bg-surface text-[11px] uppercase tracking-wider text-ink-3 border-b border-surface-3">
               <tr>
-                <th className="px-5 py-3.5 font-semibold">Courier</th>
+                <th className="px-5 py-3.5 font-semibold">Applicant</th>
                 <th className="px-5 py-3.5 font-semibold">Email</th>
                 <th className="px-5 py-3.5 font-semibold">Phone</th>
-                <th className="px-5 py-3.5 font-semibold">Status</th>
-                <th className="px-5 py-3.5 font-semibold text-right">Actions</th>
+                <th className="px-5 py-3.5 font-semibold">Applied</th>
+                <th className="px-5 py-3.5 font-semibold text-right">Decision</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-3">
-              {approved.map((u) => (
+              {pending.map((u) => (
                 <tr key={u.id} className="hover:bg-surface transition-colors">
                   <td className="px-5 py-4 font-semibold text-ink">{u.name}</td>
                   <td className="px-5 py-4 text-ink-2">{u.email}</td>
                   <td className="px-5 py-4 text-ink-2">{u.phone ?? <span className="text-ink-3">—</span>}</td>
-                  <td className="px-5 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                      u.isActive === 'ACTIVE' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                      'bg-rose-50 text-rose-600 border-rose-200'
-                    }`}>
-                      {u.isActive.charAt(0) + u.isActive.slice(1).toLowerCase()}
-                    </span>
-                  </td>
+                  <td className="px-5 py-4 text-ink-3">{formatDate(u.createdAt).split(',')[0]}</td>
                   <td className="px-5 py-4 text-right">
-                    <div className="flex gap-1 justify-end">
-                      {u.isActive === 'BLOCKED' ? (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={busy}
-                          onClick={() => run(() => api.unblockUser(u.id), `${u.name} unblocked`)}
-                        >
-                          Unblock
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-amber-600 hover:text-amber-600 hover:bg-amber-50"
-                          disabled={busy}
-                          onClick={() => run(() => api.blockUser(u.id), `${u.name} blocked`)}
-                        >
-                          Block
-                        </Button>
-                      )}
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => run(() => api.approveCourier(u.id), `${u.name} approved`)}
+                      >
+                        Approve
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         className="text-rose-600 hover:text-rose-600 hover:bg-rose-50"
                         disabled={busy}
-                        onClick={() =>
-                          run(() => api.rejectCourier(u.id), `${u.name} moved back to sender`)
-                        }
+                        onClick={() => run(() => api.rejectCourier(u.id), `${u.name} rejected`)}
                       >
-                        Revoke
+                        Reject
                       </Button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {approved.length === 0 && (
+              {pending.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-5 py-12 text-center text-ink-3 text-sm">
-                    No approved couriers yet.
+                    No applications waiting.
                   </td>
                 </tr>
               )}

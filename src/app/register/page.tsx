@@ -75,7 +75,7 @@ export default function RegisterPage() {
               type="button"
               onClick={() => setForm({ ...form, role: intent.role })}
               className={cn(
-                'rounded-[var(--radius-md)] border p-3 text-left transition-colors',
+                'rounded-lg border p-3 text-left transition-colors',
                 form.role === intent.role
                   ? 'border-accent bg-accent-bg'
                   : 'border-surface-3 hover:border-ink-3',
@@ -134,8 +134,8 @@ export default function RegisterPage() {
               approves your application.
             </p>
           )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
+          {error && <p className="text-sm text-rose-600">{error}</p>}
+          <Button type="submit" size="lg" className="w-full" disabled={loading}>
             {loading ? 'Creating…' : 'Register'}
           </Button>
         </form>

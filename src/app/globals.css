@@ -17,10 +17,7 @@
   --color-blue: #3b82f6;
   --color-blue-bg: #eff6ff;
   --font-sans: var(--font-dm-sans);
-  --font-display: var(--font-syne);
-  --radius-lg: 24px;
-  --radius-xl: 32px;
-  --radius-md: 12px;
+  --font-display: var(--font-poppins);
 
   --animate-float: float 6s ease-in-out infinite;
   --animate-float-delayed: float 6s ease-in-out infinite 3s;
@@ -52,7 +49,7 @@ body {
 }
 
 .font-display {
-  font-family: var(--font-display), system-ui, sans-serif;
+  font-family: var(--font-poppins), system-ui, sans-serif;
 }
 
 /* Glassmorphism Styles */
