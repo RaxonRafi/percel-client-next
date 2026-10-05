@@ -290,10 +290,14 @@ export function ChatWidget() {
           {messages.map((message) => {
             const isAI = message.role === 'assistant';
             
-            // Deduplicate sources to avoid duplicates in rendering
+            // Only documents are worth citing: parcel records come back with a
+            // tracking ID as their source, which means nothing to the reader.
+            // Deduplicated, since several chunks can share one document.
             const uniqueSources = message.sources
               ? message.sources.filter(
-                  (s, idx, self) => self.findIndex((src) => src.source === s.source) === idx
+                  (s, idx, self) =>
+                    s.type === 'pdf' &&
+                    self.findIndex((src) => src.source === s.source) === idx
                 )
               : [];
 
