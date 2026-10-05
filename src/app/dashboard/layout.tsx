@@ -6,11 +6,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   IconPackage, IconLayoutDashboard, IconPackages,
   IconUsers, IconChartBar, IconUser, IconRobot,
-  IconTruckDelivery, IconLogout, IconSearch, IconBell, IconArrowLeft,
+  IconTruckDelivery, IconLogout, IconSearch, IconArrowLeft,
   IconShield,
 } from '@tabler/icons-react';
 import { logout } from '@/lib/api';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
+import { NotificationsProvider } from '@/lib/notifications-context';
+import { NotificationBell, NotificationToasts } from '@/components/dashboard/notification-bell';
 import type { Role } from '@/lib/types';
 
 type NavItem = {
@@ -85,7 +87,10 @@ function initials(name: string): string {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <DashboardShell>{children}</DashboardShell>
+      <NotificationsProvider>
+        <DashboardShell>{children}</DashboardShell>
+        <NotificationToasts />
+      </NotificationsProvider>
     </AuthProvider>
   );
 }
@@ -212,10 +217,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
               />
             </div>
 
-            <button className="relative flex h-9 w-9 items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink">
-              <IconBell size={18} />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-accent ring-2 ring-white" />
-            </button>
+            <NotificationBell />
 
             <Link href="/" className="flex h-9 items-center gap-2 rounded-lg border border-surface-3 bg-white px-3 text-sm font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink">
               <IconArrowLeft size={16} /> Site

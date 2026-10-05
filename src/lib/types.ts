@@ -245,3 +245,20 @@ export interface AuditLogQuery extends ListQuery {
   targetType?: AuditLogTargetType;
   targetId?: string;
 }
+
+/** Pushed over Socket.IO by the API's realtime gateway. Never persisted. */
+export interface RealtimeNotification {
+  id: string;
+  type:
+    | 'parcel.created'
+    | 'parcel.status'
+    | 'parcel.assigned'
+    | 'parcel.unassigned'
+    | 'parcel.blocked'
+    | 'parcel.unblocked';
+  title: string;
+  message: string;
+  trackingId: string;
+  status: ParcelStatus;
+  createdAt: string;
+}
