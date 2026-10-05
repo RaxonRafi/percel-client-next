@@ -303,11 +303,11 @@ export function ChatWidget() {
                 className={cn("flex w-full animate-fade-in", isAI ? "justify-start" : "justify-end")}
               >
                 <div className={cn("flex gap-2 max-w-[85%]", isAI ? "items-start" : "items-end flex-row-reverse")}>
-                  {isAI && (
+                  {isAI ? (
                     <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-bg text-accent flex-shrink-0 mt-0.5 shadow-sm">
                       <Sparkles className="h-3.5 w-3.5" />
                     </div>
-                  )}
+                  ) : null}
                   
                   <div className="flex flex-col">
                     <div
@@ -322,7 +322,7 @@ export function ChatWidget() {
                     </div>
 
                     {/* RAG citations / sources */}
-                    {isAI && uniqueSources.length > 0 && (
+                    {isAI && uniqueSources.length > 0 ? (
                       <div className="mt-2 border-t border-white/5 pt-2">
                         <span className="text-[9px] uppercase tracking-wider text-ink-3 font-bold flex items-center gap-1 mb-1.5">
                           <FileText className="h-2.5 w-2.5 text-accent" /> Verified Sources ({uniqueSources.length})
@@ -340,7 +340,7 @@ export function ChatWidget() {
                           ))}
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -348,7 +348,7 @@ export function ChatWidget() {
           })}
 
           {/* Typing Indicator */}
-          {isLoading && (
+          {isLoading ? (
             <div className="flex w-full justify-start animate-pulse">
               <div className="flex gap-2 max-w-[85%] items-start">
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-bg text-accent flex-shrink-0 mt-0.5">
@@ -363,20 +363,20 @@ export function ChatWidget() {
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Error Alert inside message feed */}
-          {error && (
+          {error ? (
             <div className="flex w-full justify-center">
               <div className="flex items-center gap-2 rounded-xl bg-red-950/40 border border-red-500/20 px-3.5 py-2 text-xs text-red-300">
                 <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
                 <div className="flex-1">{error}</div>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* SUGGESTIONS: Only show when user hasn't asked anything yet */}
-          {signedIn && messages.length === 1 && !isLoading && (
+          {signedIn && messages.length === 1 && !isLoading ? (
             <div className="pt-2 space-y-2 animate-fade-in">
               <span className="text-[10px] uppercase tracking-wider text-ink-3 font-bold px-1 block">
                 Common Questions
@@ -394,7 +394,7 @@ export function ChatWidget() {
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
 
           <div ref={messagesEndRef} />
         </div>

@@ -1,252 +1,314 @@
 import Link from 'next/link';
-import { 
-  IconCircleCheck, IconClock, 
-  IconCurrencyDollar, IconShieldCheck, IconReceipt, IconBuildingStore,
-  IconPackage
+import Image from 'next/image';
+import { Poppins } from 'next/font/google';
+import {
+  IconArrowUpRight, IconBolt, IconCamera, IconClock, IconMapPin,
+  IconMapPinFilled, IconSend, IconShieldCheck, IconSparkles, IconTruckDelivery,
 } from '@tabler/icons-react';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+});
+
+const navLinks = [
+  { href: '/', label: 'Home' },
+  { href: '#why-us', label: 'Why us' },
+  { href: '#services', label: 'Services' },
+  { href: '/track', label: 'Track' },
+  { href: '#contact', label: 'Contact' },
+];
+
+const reasons = [
+  {
+    icon: IconClock,
+    title: 'Live tracking, door to door',
+    text: 'Every scan is logged, so you always know where your parcel is.',
+  },
+  {
+    icon: IconCamera,
+    title: 'Proof on every delivery',
+    text: 'Couriers confirm each drop-off before a parcel is marked delivered.',
+  },
+  {
+    icon: IconShieldCheck,
+    title: 'Claims without the back-and-forth',
+    text: 'If something goes wrong, raise a claim and follow it from your dashboard.',
+  },
+];
+
+const services = [
+  {
+    src: '/card_fast.jpg',
+    title: 'Express Delivery',
+    text: 'Same-day delivery across major cities',
+  },
+  {
+    src: '/card_secure.jpg',
+    title: 'Secure Lockers',
+    text: '24/7 access to your high-value parcels',
+  },
+];
+
+const cardShadow = 'shadow-[0_18px_50px_-18px_rgba(13,13,13,0.18)]';
+
+const Header = (
+  <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+    <Link href="/" className={`${poppins.className} text-2xl font-bold tracking-tight`}>
+      <span className="text-accent">P</span>arcel Payout
+    </Link>
+
+    <nav className="hidden items-center gap-8 text-sm font-medium text-ink-2 md:flex">
+      {navLinks.map((link) => (
+        <Link key={link.label} href={link.href} className="transition hover:text-accent">
+          {link.label}
+        </Link>
+      ))}
+    </nav>
+
+    <div className="flex items-center gap-3">
+      <Link
+        href="/login"
+        className="rounded-lg bg-surface-2 px-4 py-3 text-sm font-semibold transition hover:bg-surface-3"
+      >
+        Log In
+      </Link>
+      <Link
+        href="/register"
+        className={`hidden rounded-lg bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-ink-2 sm:block ${cardShadow}`}
+      >
+        Get Started
+      </Link>
+    </div>
+  </header>
+);
+
+const Hero = (
+  <section className="mx-auto grid max-w-6xl items-center gap-16 px-6 pb-20 pt-10 lg:grid-cols-2 lg:gap-8 lg:pt-16">
+    <div className="relative">
+      <IconSparkles
+        className="absolute -top-10 right-10 hidden text-surface-3 lg:block"
+        size={36}
+        stroke={1}
+        aria-hidden
+      />
+      <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+        Super fast delivery
+      </p>
+      <h1 className={`${poppins.className} text-5xl font-semibold leading-[1.1] tracking-tight sm:text-6xl`}>
+        We have faster delivery in your town
+      </h1>
+      <p className="mt-6 max-w-sm text-base leading-relaxed text-ink-2">
+        Fast, reliable and fully tracked parcel delivery — from pickup to doorstep.
+      </p>
+
+      <form
+        action="/track"
+        className={`mt-9 flex max-w-md items-center rounded-xl bg-white p-1.5 transition focus-within:ring-2 focus-within:ring-accent/30 ${cardShadow}`}
+      >
+        <IconMapPinFilled className="ml-3 shrink-0 text-accent" size={18} aria-hidden />
+        <input
+          name="id"
+          required
+          aria-label="Tracking ID"
+          placeholder="Type your tracking ID"
+          className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm outline-none placeholder:text-ink-3"
+        />
+        <button
+          type="submit"
+          className="rounded-lg bg-accent px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-accent-2"
+        >
+          Track
+        </button>
+      </form>
+
+      {/* Dashed arrow pointing from the search bar to the hero image */}
+      <svg
+        className="absolute -bottom-14 right-0 hidden text-accent lg:block"
+        width="130"
+        height="50"
+        viewBox="0 0 130 50"
+        fill="none"
+        aria-hidden
+      >
+        <path
+          d="M2 4c8 34 38 44 62 30s34-14 58-8"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeDasharray="4 4"
+          strokeLinecap="round"
+        />
+        <path d="m114 20 9 6-9 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+
+    <div className="relative mx-auto w-full max-w-sm lg:max-w-md">
+      <div className="absolute -right-4 -top-4 h-full w-full rounded-[40px] bg-accent-bg" aria-hidden />
+      <div className="relative aspect-[4/5] overflow-hidden rounded-[40px]">
+        <Image
+          src="/hero_parcel.jpg"
+          alt="Courier handing a parcel to a customer"
+          fill
+          priority
+          sizes="(min-width: 1024px) 448px, 384px"
+          className="object-cover object-[35%_center]"
+        />
+      </div>
+
+      <div className={`absolute -right-3 top-12 w-44 rounded-xl bg-white p-3 motion-safe:animate-float sm:-right-10 ${cardShadow}`}>
+        <div className={`${poppins.className} flex items-center gap-2 text-sm font-medium`}>
+          <IconBolt className="text-accent" size={18} aria-hidden /> Fast delivery
+        </div>
+        <p className="mt-1 text-[11px] leading-snug text-ink-3">We&apos;ll get it to you as quickly as lightning.</p>
+      </div>
+
+      <div className={`absolute -left-3 bottom-10 w-44 rounded-xl bg-white p-3 motion-safe:animate-float-delayed sm:-left-12 ${cardShadow}`}>
+        <div className={`${poppins.className} flex items-center gap-2 text-sm font-medium`}>
+          <IconMapPin className="text-accent" size={18} aria-hidden /> Live locations
+        </div>
+        <p className="mt-1 text-[11px] leading-snug text-ink-3">See where your parcel is at every step.</p>
+      </div>
+
+      <div className="absolute -left-6 top-16 hidden h-10 w-10 -rotate-12 items-center justify-center rounded-lg bg-accent text-white sm:flex" aria-hidden>
+        <IconTruckDelivery size={20} />
+      </div>
+      <div className="absolute -left-10 top-1/2 hidden h-9 w-9 rotate-12 items-center justify-center rounded-lg bg-blue text-white sm:flex" aria-hidden>
+        <IconClock size={18} />
+      </div>
+      <div className="absolute -right-8 bottom-1/3 hidden h-9 w-9 rotate-12 items-center justify-center rounded-lg bg-amber text-white sm:flex" aria-hidden>
+        <IconSend size={18} />
+      </div>
+    </div>
+  </section>
+);
+
+const WhyUs = (
+  <section id="why-us" className="mx-auto grid max-w-6xl scroll-mt-10 items-center gap-16 px-6 py-20 lg:grid-cols-2 lg:gap-20">
+    <div className="relative mx-auto w-full max-w-sm">
+      <div className="absolute -bottom-4 -left-4 h-4/5 w-full rounded-[32px] bg-accent" aria-hidden />
+      <div className="relative aspect-[4/5] overflow-hidden rounded-[32px]">
+        <Image
+          src="/card_fast.jpg"
+          alt="Delivery van driving through the city at dusk"
+          fill
+          sizes="384px"
+          className="object-cover"
+        />
+      </div>
+
+      {/* Rotating text badge */}
+      <div className={`absolute -right-4 top-10 h-28 w-28 rounded-full bg-white sm:-right-12 ${cardShadow}`} aria-hidden>
+        <svg viewBox="0 0 112 112" className="h-full w-full motion-safe:animate-spin-slow">
+          <defs>
+            <path id="badge-circle" d="M56 56m-41 0a41 41 0 1 1 82 0a41 41 0 1 1-82 0" />
+          </defs>
+          <text className={`${poppins.className} fill-ink text-[11.5px] font-medium tracking-[0.18em]`}>
+            <textPath href="#badge-circle">we have faster delivery for you ·</textPath>
+          </text>
+        </svg>
+        <div className="absolute inset-0 m-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue text-white">
+          <IconArrowUpRight size={22} />
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h2 className={`${poppins.className} text-3xl font-semibold leading-tight tracking-tight sm:text-[40px]`}>
+        What made you decide to use our service?
+      </h2>
+      <p className="mt-4 max-w-md text-sm leading-relaxed text-ink-3">
+        Send your parcel at any time and we will deliver it directly to the door. Here is what
+        keeps people coming back.
+      </p>
+
+      <ul className="mt-8 space-y-4">
+        {reasons.map(({ icon: Icon, title, text }) => (
+          <li key={title} className={`flex max-w-md items-start gap-4 rounded-2xl bg-white p-4 ${cardShadow}`}>
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent-bg text-accent">
+              <Icon size={22} aria-hidden />
+            </span>
+            <div>
+              <h3 className={`${poppins.className} text-base font-medium`}>{title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-ink-3">{text}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+);
+
+const Services = (
+  <section id="services" className="mx-auto max-w-6xl scroll-mt-10 px-6 py-20">
+    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-accent">Choose a service</p>
+    <h2 className={`${poppins.className} mb-10 text-3xl font-semibold tracking-tight sm:text-[40px]`}>
+      A solution for your delivery
+    </h2>
+
+    <div className="grid gap-6 md:grid-cols-2">
+      {services.map((service) => (
+        <div key={service.title} className="group relative h-72 overflow-hidden rounded-[32px]">
+          <Image
+            src={service.src}
+            alt=""
+            fill
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="object-cover transition duration-700 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/85 to-transparent" />
+          <div className="absolute bottom-6 left-6 right-6 text-white">
+            <h3 className={`${poppins.className} mb-1 text-2xl font-semibold`}>{service.title}</h3>
+            <p className="text-sm text-white/75">{service.text}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+);
+
+const Footer = (
+  <footer id="contact" className="mx-auto max-w-6xl px-6 pb-28 pt-10">
+    <div className="flex flex-col items-start justify-between gap-8 rounded-[32px] bg-ink p-10 text-white md:flex-row md:items-center md:p-14">
+      <div>
+        <h2 className={`${poppins.className} text-3xl font-semibold tracking-tight`}>
+          Ready to send your first parcel?
+        </h2>
+        <p className="mt-3 max-w-md text-sm text-white/60">
+          Create an account in a minute, or check on a parcel that is already on its way.
+        </p>
+      </div>
+      <div className="flex shrink-0 gap-3">
+        <Link href="/register" className="rounded-lg bg-accent px-6 py-3.5 text-sm font-semibold transition hover:bg-accent-2">
+          Get Started
+        </Link>
+        <Link href="/track" className="rounded-lg bg-white/10 px-6 py-3.5 text-sm font-semibold transition hover:bg-white/20">
+          Track a parcel
+        </Link>
+      </div>
+    </div>
+    <p className="mt-8 text-center text-xs text-ink-3">
+      © {new Date().getFullYear()} Parcel Payout. All rights reserved.
+    </p>
+  </footer>
+);
 
 export default function LandingPage() {
   return (
-    <div id="landing" style={{ position: 'relative', overflow: 'hidden', background: '#ffffff', minHeight: '100vh' }}>
-      <div className="hero-blob"></div>
-
-      <nav className="nav-bar-sp" style={{ background: 'transparent', borderBottom: 'none' }}>
-        <Link className="nav-logo" href="/" style={{ color: '#000', fontSize: '18px' }}>
-          <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-            <div style={{ width: '12px', height: '12px', background: '#14B8A6', borderRadius: '2px' }}></div>
-            <div style={{ width: '12px', height: '12px', background: '#F97316', borderRadius: '2px' }}></div>
-            <div style={{ width: '12px', height: '12px', background: '#3B82F6', borderRadius: '2px' }}></div>
-          </div>
-          <span style={{ color: '#000', marginLeft: '6px' }}>Parcel Payout</span>
-        </Link>
-        <div className="nav-links" style={{ margin: '0 auto', gap: '40px' }}>
-          <Link href="#features">Features</Link>
-          <Link href="#pricing">Pricing</Link>
-          <Link href="#about-us">About Us</Link>
-          <Link href="#use-cases">Use Cases</Link>
-        </div>
-        <div>
-          <Link href="/dashboard" className="btn-black-pill">
-            Get started
-          </Link>
-        </div>
-      </nav>
-
-      <section style={{ paddingTop: '160px', paddingBottom: '40px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
-        <div className="hero-badge-redesign">
-          <IconReceipt size={16} color="#14B8A6" /> Courier claims platform
-        </div>
-        
-        <h1 className="hero-title" style={{ maxWidth: '800px', margin: '0 auto 24px', letterSpacing: '-1px', color: '#000', fontSize: '56px' }}>
-          The easy way to claim for <span style={{ color: '#14B8A6' }}>lost and missing parcels</span>
-        </h1>
-        
-        <p className="hero-sub" style={{ margin: '0 auto 40px', maxWidth: '520px' }}>
-          Parcel Payout works with all major carriers to reclaim funds from lost and damaged shipments.
-        </p>
-        
-        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Link href="/dashboard" className="btn-black-pill" style={{ padding: '12px 28px', fontSize: '15px' }}>
-            Get started
-          </Link>
-          <form action="/track" method="GET" style={{ display: 'flex', background: '#fff', border: '1px solid var(--surface3)', borderRadius: '50px', padding: '4px 4px 4px 20px', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-            <IconPackage size={18} color="var(--ink3)" />
-            <input type="text" name="id" required placeholder="Tracking number..." style={{ border: 'none', outline: 'none', background: 'transparent', padding: '8px 12px', width: '200px', fontSize: '15px', color: '#000' }} />
-            <button type="submit" className="btn-black-pill" style={{ padding: '8px 20px', fontSize: '14px', background: '#14B8A6' }}>Track</button>
-          </form>
-        </div>
-      </section>
-
-      {/* Dashboard Mockup */}
-      <section style={{ padding: '0 48px', position: 'relative', zIndex: 1 }}>
-        <div className="mockup-3d-container">
-          <div className="mockup-3d-wrapper">
-            <div className="mockup-dashboard-inner">
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
-                <div style={{ fontWeight: '700', fontSize: '14px', display: 'flex', gap:'6px', alignItems:'center' }}>
-                   <div style={{ width: '10px', height: '10px', background: '#14B8A6', borderRadius: '2px' }}></div>
-                   Parcel Payout
-                </div>
-                <div style={{ fontSize: '13px', fontWeight: '500', display:'flex', gap:'8px', alignItems:'center' }}>
-                  Hey, Tarun! <div style={{width:'24px',height:'24px',borderRadius:'50%',background:'#f1f1f1',display:'flex',alignItems:'center',justifyContent:'center'}}>T</div>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
-                <div style={{ border: '1px solid var(--surface3)', borderRadius: '8px', padding: '16px' }}>
-                   <div style={{ fontSize: '11px', color: 'var(--ink3)' }}>Claims paid</div>
-                   <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>478</div>
-                   <div style={{ fontSize: '10px', color: 'var(--green)' }}>+12.5% vs last month</div>
-                </div>
-                <div style={{ border: '1px solid var(--surface3)', borderRadius: '8px', padding: '16px' }}>
-                   <div style={{ fontSize: '11px', color: 'var(--ink3)' }}>Credit received</div>
-                   <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>$1465.00</div>
-                   <div style={{ fontSize: '10px', color: 'var(--green)' }}>+8.1% vs last month</div>
-                </div>
-                <div style={{ border: '1px solid var(--surface3)', borderRadius: '8px', padding: '16px' }}>
-                   <div style={{ fontSize: '11px', color: 'var(--ink3)' }}>Claims in progress</div>
-                   <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>164</div>
-                   <div style={{ fontSize: '10px', color: 'var(--ink3)' }}>-2.4% vs last month</div>
-                </div>
-              </div>
-
-              <table className="shipments-table" style={{ background: '#fff' }}>
-                <thead>
-                  <tr>
-                    <th>Tracking No.</th>
-                    <th>Date updated</th>
-                    <th>Carrier</th>
-                    <th>Claim amount</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><div className="pkg-id">PC 678930576</div></td>
-                    <td>01/01/2025</td>
-                    <td><span style={{background:'#FEE8E8', color:'#A32D2D', padding:'3px 8px', borderRadius:'4px', fontSize:'11px', fontWeight:'600'}}>Royal Mail</span></td>
-                    <td>$12.45</td>
-                    <td><span style={{background:'#E6F4ED', color:'#1A7A4A', padding:'4px 10px', borderRadius:'50px', fontSize:'11px', fontWeight:'500'}}>Accepted</span></td>
-                  </tr>
-                  <tr>
-                    <td><div className="pkg-id">PC 678930575</div></td>
-                    <td>01/01/2025</td>
-                    <td><span style={{background:'#FEE8E8', color:'#A32D2D', padding:'3px 8px', borderRadius:'4px', fontSize:'11px', fontWeight:'600'}}>Royal Mail</span></td>
-                    <td>$8.90</td>
-                    <td><span style={{background:'#E6F4ED', color:'#1A7A4A', padding:'4px 10px', borderRadius:'50px', fontSize:'11px', fontWeight:'500'}}>Accepted</span></td>
-                  </tr>
-                  <tr>
-                    <td><div className="pkg-id">PC 678930574</div></td>
-                    <td>01/01/2025</td>
-                    <td><span style={{background:'#E8EEFB', color:'#1A4FA0', padding:'3px 8px', borderRadius:'4px', fontSize:'11px', fontWeight:'600'}}>FedEx</span></td>
-                    <td>$45.00</td>
-                    <td><span style={{background:'#FFF5E0', color:'#B86C00', padding:'4px 10px', borderRadius:'50px', fontSize:'11px', fontWeight:'500'}}>Pending</span></td>
-                  </tr>
-                  <tr>
-                    <td><div className="pkg-id">PC 678930573</div></td>
-                    <td>01/01/2025</td>
-                    <td><span style={{background:'#FEE8E8', color:'#A32D2D', padding:'3px 8px', borderRadius:'4px', fontSize:'11px', fontWeight:'600'}}>DHL</span></td>
-                    <td>$120.00</td>
-                    <td><span style={{background:'#FFF5E0', color:'#B86C00', padding:'4px 10px', borderRadius:'50px', fontSize:'11px', fontWeight:'500'}}>Pending</span></td>
-                  </tr>
-                </tbody>
-              </table>
-
-            </div>
-          </div>
-        </div>
-
-        <div className="inline-features">
-          <div className="inline-feature"><IconCircleCheck size={18} color="#14B8A6" /> No upfront costs</div>
-          <div className="inline-feature"><IconCircleCheck size={18} color="#14B8A6" /> 100% commission based</div>
-          <div className="inline-feature"><IconCircleCheck size={18} color="#14B8A6" /> Zero integrations</div>
-        </div>
-      </section>
-
-      {/* Feature Cards */}
-      <section id="features" style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 48px 120px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
-          
-          <div className="redesign-feature-card">
-            <div className="icon-circle-yellow"><IconClock size={18} color="#CA8A04" /></div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>Saving Time</h3>
-            <p style={{ fontSize: '14px', color: 'var(--ink2)', lineHeight: '1.6' }}>
-              Courier claims are time-consuming and tedious. We take care of the entire process for you — no forms, no follow-ups, no wasted time.
-            </p>
-          </div>
-
-          <div className="redesign-feature-card">
-            <div className="icon-square-pink"><IconCurrencyDollar size={18} /></div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>Increase Profits</h3>
-            <p style={{ fontSize: '14px', color: 'var(--ink2)', lineHeight: '1.6' }}>
-              Up to 3% of parcels are lost — and that&apos;s money you shouldn&apos;t lose. We track and claim every refund, so nothing slips through the cracks.
-            </p>
-          </div>
-
-          <div className="redesign-feature-card">
-            <div className="icon-shield-blue"><IconShieldCheck size={28} /></div>
-            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '12px' }}>Never Miss a Claim</h3>
-            <p style={{ fontSize: '14px', color: 'var(--ink2)', lineHeight: '1.6' }}>
-              We automatically monitor your shipments and file claims the moment an issue is detected, so you never have to recover lost revenue.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" style={{ padding: '100px 48px', background: '#F8FAFC', textAlign: 'center' }}>
-        <h2 style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: '36px', fontWeight: '700', marginBottom: '16px' }}>Simple, transparent pricing</h2>
-        <p style={{ color: 'var(--ink2)', marginBottom: '48px', maxWidth: '500px', margin: '0 auto 48px' }}>Start recovering your lost revenue today. Only pay a percentage of the claims we successfully win for you.</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '32px', maxWidth: '800px', margin: '0 auto' }}>
-          <div className="redesign-feature-card" style={{ textAlign: 'left' }}>
-            <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>Standard</h3>
-            <p style={{ color: 'var(--ink2)', marginBottom: '24px' }}>For small to medium sellers</p>
-            <div style={{ fontSize: '48px', fontWeight: '800', marginBottom: '24px' }}>20% <span style={{ fontSize: '16px', color: 'var(--ink3)', fontWeight: '500' }}>/ successful claim</span></div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', gap: '12px', display: 'flex', flexDirection: 'column' }}>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><IconCircleCheck size={18} color="#14B8A6" /> No upfront costs</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><IconCircleCheck size={18} color="#14B8A6" /> Automated tracking</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><IconCircleCheck size={18} color="#14B8A6" /> Email support</li>
-            </ul>
-            <Link href="/dashboard" className="btn-black-pill" style={{ width: '100%', justifyContent: 'center' }}>Get started</Link>
-          </div>
-          <div className="redesign-feature-card" style={{ textAlign: 'left', border: '2px solid #14B8A6', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: '-12px', right: '24px', background: '#14B8A6', color: '#fff', fontSize: '12px', fontWeight: '600', padding: '4px 12px', borderRadius: '50px' }}>Most Popular</div>
-            <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>Enterprise</h3>
-            <p style={{ color: 'var(--ink2)', marginBottom: '24px' }}>For high volume shippers</p>
-            <div style={{ fontSize: '48px', fontWeight: '800', marginBottom: '24px' }}>15% <span style={{ fontSize: '16px', color: 'var(--ink3)', fontWeight: '500' }}>/ successful claim</span></div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', gap: '12px', display: 'flex', flexDirection: 'column' }}>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><IconCircleCheck size={18} color="#14B8A6" /> Everything in Standard</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><IconCircleCheck size={18} color="#14B8A6" /> Dedicated account manager</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><IconCircleCheck size={18} color="#14B8A6" /> API integrations</li>
-            </ul>
-            <Link href="/dashboard" className="btn-black-pill" style={{ width: '100%', justifyContent: 'center' }}>Contact Sales</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* About Us Section */}
-      <section id="about-us" style={{ padding: '120px 48px', maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
-        <h2 style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: '36px', fontWeight: '700', marginBottom: '24px' }}>About Us</h2>
-        <p style={{ fontSize: '18px', color: 'var(--ink2)', lineHeight: '1.8', marginBottom: '40px' }}>
-          We built Parcel Payout because we saw firsthand how much money e-commerce businesses lose to carrier mistakes. The claims process is deliberately complex and time-consuming, meaning billions of dollars are left unclaimed every year. Our mission is to level the playing field by automating the entire claims process, putting money back where it belongs—in your pocket.
-        </p>
-      </section>
-
-      {/* Use Cases Section */}
-      <section id="use-cases" style={{ padding: '100px 48px', background: '#111827', color: '#fff' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: '36px', fontWeight: '700', marginBottom: '48px', textAlign: 'center' }}>Who is Parcel Payout for?</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
-            <div style={{ padding: '32px', background: '#1F2937', borderRadius: '12px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '12px', color: '#14B8A6' }}>E-Commerce Brands</h3>
-              <p style={{ color: '#9CA3AF', lineHeight: '1.6' }}>Protect your margins. If you ship hundreds or thousands of packages a month, a percentage will inevitably get lost or damaged. We automatically claim those losses so you don&apos;t have to.</p>
-            </div>
-            <div style={{ padding: '32px', background: '#1F2937', borderRadius: '12px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '12px', color: '#F97316' }}>3PLs & Fulfillment Centers</h3>
-              <p style={{ color: '#9CA3AF', lineHeight: '1.6' }}>Offer claims resolution as a value-add service to your merchants. Connect your carrier accounts and let our platform handle the heavy lifting for all your clients.</p>
-            </div>
-            <div style={{ padding: '32px', background: '#1F2937', borderRadius: '12px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '12px', color: '#3B82F6' }}>High-Value Shippers</h3>
-              <p style={{ color: '#9CA3AF', lineHeight: '1.6' }}>Shipping electronics, jewelry, or luxury goods? A single lost parcel is a significant hit. We ensure you get maximum compensation without the headache of endless carrier calls.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section style={{ textAlign: 'center', padding: '120px 48px' }}>
-        <div className="hero-badge-redesign" style={{ background: '#F0FDFA', color: '#14B8A6', borderColor: '#CCFBF1' }}>
-          <IconBuildingStore size={16} /> Get Started
-        </div>
-        <h2 style={{ fontFamily: 'var(--font-dm-sans), sans-serif', fontSize: '42px', fontWeight: '700', letterSpacing: '-1px', marginBottom: '32px' }}>
-          Recover more money<br/>with Parcel Payout
-        </h2>
-        <Link href="/dashboard" className="btn-black-pill" style={{ padding: '12px 32px', fontSize: '16px' }}>
-          Claim your lost revenue →
-        </Link>
-      </section>
-
+    <div className="relative min-h-screen overflow-hidden bg-white text-ink">
+      {/* Soft accent glow behind the header, top-left */}
+      <div
+        className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-accent/10 blur-3xl"
+        aria-hidden
+      />
+      <div className="relative">
+        {Header}
+        <main>
+          {Hero}
+          {WhyUs}
+          {Services}
+        </main>
+        {Footer}
+      </div>
     </div>
   );
 }

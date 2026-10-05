@@ -149,7 +149,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {error && <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 px-4 py-3 rounded-lg text-sm">{error}</div>}
+      {error ? <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 px-4 py-3 rounded-lg text-sm">{error}</div> : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {user?.role === 'ADMIN' && stats ? (
@@ -173,7 +173,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-lg flex flex-col">
           <div className="px-5 py-4 border-b border-slate-800/60 flex justify-between items-center">
             <h2 className="text-[13px] font-bold uppercase tracking-wider text-slate-300">Volume Status</h2>
-            {truncated && <span className="text-[11px] text-slate-500 font-mono">LATEST 100</span>}
+            {truncated ? <span className="text-[11px] text-slate-500 font-mono">LATEST 100</span> : null}
           </div>
           <div className="p-5 flex-1 flex items-end gap-3 h-64">
             {PARCEL_STATUSES.map((status) => {
@@ -226,7 +226,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-            {user?.role === 'ADMIN' && stats && (
+            {user?.role === 'ADMIN' && stats ? (
               <div className="mt-2 pt-3 border-t border-slate-800/60 flex items-center justify-between text-sm">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-rose-500" />
@@ -234,7 +234,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="font-mono text-rose-500 font-bold">{stats.blockedParcels}</div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
@@ -276,11 +276,11 @@ export default function DashboardPage() {
                         <div className="w-1.5 h-1.5 rounded-full bg-current" />
                         {formatStatus(p.status)}
                       </span>
-                      {p.isBlocked && (
+                      {p.isBlocked ? (
                         <span className="px-2 py-1 rounded border bg-rose-500/10 text-rose-500 border-rose-500/20 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
                           <IconBan size={12} /> BLOCKED
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </td>
                   <td className="px-5 py-3 text-right font-mono text-slate-500 text-[11px]">
@@ -288,13 +288,13 @@ export default function DashboardPage() {
                   </td>
                 </tr>
               ))}
-              {recent.length === 0 && (
+              {recent.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-5 py-8 text-center text-slate-500 text-sm">
                     No telemetry data available.
                   </td>
                 </tr>
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>
