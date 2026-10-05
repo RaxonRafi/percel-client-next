@@ -65,7 +65,7 @@ export function ChatWidget() {
     if (!text.trim() || isLoading || !signedIn) return;
 
     const userMessage: Message = {
-      id: Math.random().toString(36).substring(7),
+      id: crypto.randomUUID(),
       role: 'user',
       content: text,
       timestamp: new Date(),
@@ -77,7 +77,7 @@ export function ChatWidget() {
     setError(null);
     
     // Create an empty assistant message to stream into
-    const assistantId = Math.random().toString(36).substring(7);
+    const assistantId = crypto.randomUUID();
     setMessages((prev) => [
       ...prev,
       { id: assistantId, role: 'assistant', content: '', sources: [], timestamp: new Date() }
