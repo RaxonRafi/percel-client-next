@@ -7,6 +7,27 @@ const USER_KEY = 'sp_user';
 /** Notifies hooks in the current tab; `storage` only fires in other tabs. */
 const AUTH_EVENT = 'sp-auth-change';
 
+/**
+ * A session lives in localStorage by default. With "Keep me signed in" off it
+ * goes to sessionStorage instead, so it ends when the tab closes.
+ */
+function read(key: string): string | null {
+  return sessionStorage.getItem(key) ?? localStorage.getItem(key);
+}
+
+/** Whichever store holds the current session, so refreshes stay where sign-in put them. */
+function activeStore(): Storage {
+  return sessionStorage.getItem(REFRESH_KEY) ? sessionStorage : localStorage;
+}
+
+function wipe(): void {
+  for (const store of [localStorage, sessionStorage]) {
+    store.removeItem(ACCESS_KEY);
+    store.removeItem(REFRESH_KEY);
+    store.removeItem(USER_KEY);
+  }
+}
+
 function announce(): void {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(AUTH_EVENT));
@@ -25,17 +46,17 @@ export function onAuthChange(listener: () => void): () => void {
 
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(ACCESS_KEY);
+  return read(ACCESS_KEY);
 }
 
 export function getRefreshToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(REFRESH_KEY);
+  return read(REFRESH_KEY);
 }
 
 export function getStoredUser(): User | null {
   if (typeof window === 'undefined') return null;
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = read(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as User;
@@ -48,10 +69,13 @@ export function setAuth(
   accessToken: string,
   refreshToken: string,
   user: User,
+  { persist = true }: { persist?: boolean } = {},
 ): void {
-  localStorage.setItem(ACCESS_KEY, accessToken);
-  localStorage.setItem(REFRESH_KEY, refreshToken);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  wipe();
+  const store = persist ? localStorage : sessionStorage;
+  store.setItem(ACCESS_KEY, accessToken);
+  store.setItem(REFRESH_KEY, refreshToken);
+  store.setItem(USER_KEY, JSON.stringify(user));
   announce();
 }
 
@@ -61,20 +85,19 @@ export function setAuth(
  * the next refresh is rejected.
  */
 export function setTokens(accessToken: string, refreshToken: string): void {
-  localStorage.setItem(ACCESS_KEY, accessToken);
-  localStorage.setItem(REFRESH_KEY, refreshToken);
+  const store = activeStore();
+  store.setItem(ACCESS_KEY, accessToken);
+  store.setItem(REFRESH_KEY, refreshToken);
   announce();
 }
 
 /** Refreshes the cached profile after `/users/me` or a profile update. */
 export function setStoredUser(user: User): void {
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  activeStore().setItem(USER_KEY, JSON.stringify(user));
   announce();
 }
 
 export function clearAuth(): void {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-  localStorage.removeItem(USER_KEY);
+  wipe();
   announce();
 }

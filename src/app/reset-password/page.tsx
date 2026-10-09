@@ -4,10 +4,8 @@ import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
+import { AuthShell, PasswordField, SubmitButton } from '@/components/auth/auth-shell';
+import { Icon } from '@/components/icon-sprite';
 
 function ResetForm() {
   const router = useRouter();
@@ -47,29 +45,26 @@ function ResetForm() {
 
   if (done) {
     return (
-      <>
-        <h1 className="font-display mb-2 text-2xl font-bold">Password updated</h1>
-        <p className="mb-6 text-sm text-ink-2">
-          Every session has been signed out. Taking you to the sign-in page…
-        </p>
-        <Button asChild size="lg" className="w-full">
-          <Link href="/login">Sign in</Link>
-        </Button>
-      </>
+      <div className="auth-done" role="status">
+        <i><Icon name="i-check" size={34} /></i>
+        <h2>Password updated</h2>
+        <p>Every session has been signed out. Taking you to the sign-in page…</p>
+        <Link className="btn dark" href="/login">Sign in</Link>
+      </div>
     );
   }
 
   return (
     <>
-      <h1 className="font-display mb-2 text-2xl font-bold">Set a new password</h1>
-      <p className="mb-6 text-sm text-ink-3">
-        This link can be used once and expires 30 minutes after it was sent.
-      </p>
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <h1 data-in>Set a new password</h1>
+      <p data-in>This link can be used once and expires 30 minutes after it was sent.</p>
+
+      <form onSubmit={handleSubmit}>
         {!fromLink && (
-          <div>
-            <Label htmlFor="token">Reset token</Label>
-            <Input
+          <div className="field" data-in>
+            <label htmlFor="token">Reset token</label>
+            <input
+              className="input"
               id="token"
               value={token}
               onChange={(e) => setToken(e.target.value)}
@@ -78,52 +73,37 @@ function ResetForm() {
             />
           </div>
         )}
-        <div>
-          <Label htmlFor="next">New password</Label>
-          <Input
-            id="next"
-            type="password"
-            value={passwords.next}
-            onChange={(e) => setPasswords({ ...passwords, next: e.target.value })}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="confirm">Confirm new password</Label>
-          <Input
-            id="confirm"
-            type="password"
-            value={passwords.confirm}
-            onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
-            required
-          />
-        </div>
-        {error && <p className="text-sm text-rose-600">{error}</p>}
-        <Button type="submit" size="lg" className="w-full" disabled={loading || !token.trim()}>
-          {loading ? 'Updating…' : 'Update password'}
-        </Button>
+        <PasswordField
+          id="next"
+          label="New password"
+          value={passwords.next}
+          onChange={(next) => setPasswords({ ...passwords, next })}
+          placeholder="Create a new password"
+          autoComplete="new-password"
+        />
+        <PasswordField
+          id="confirm"
+          label="Confirm new password"
+          value={passwords.confirm}
+          onChange={(confirm) => setPasswords({ ...passwords, confirm })}
+          placeholder="Type it again"
+          autoComplete="new-password"
+        />
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <SubmitButton loading={loading} loadingLabel="Updating…" disabled={!token.trim()}>
+          Update password
+        </SubmitButton>
       </form>
-      <p className="mt-4 text-center text-sm text-ink-3">
-        Link expired?{' '}
-        <Link href="/forgot-password" className="text-accent hover:underline">
-          Request a new one
-        </Link>
-      </p>
     </>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface px-4">
-      <Card className="w-full max-w-md">
-        <Link href="/" className="font-display mb-6 block text-xl font-extrabold">
-          Parcel <span className="text-accent">Payout</span>
-        </Link>
-        <Suspense fallback={<p className="text-sm text-ink-3">Loading…</p>}>
-          <ResetForm />
-        </Suspense>
-      </Card>
-    </div>
+    <AuthShell switchPrompt="Link expired?" switchHref="/forgot-password" switchLabel="Request a new one">
+      <Suspense fallback={<p>Loading…</p>}>
+        <ResetForm />
+      </Suspense>
+    </AuthShell>
   );
 }

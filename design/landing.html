@@ -1,0 +1,1232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parcel Payout — Effortless delivery for a faster tomorrow</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Motion (the vanilla build of Framer Motion). Same API family as motion/react. -->
+<script src="https://cdn.jsdelivr.net/npm/motion@12/dist/motion.js"></script>
+<script>
+  // Only hide elements for entrance animations when Motion actually loaded
+  // and the visitor has not asked for reduced motion.
+  if (window.Motion && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('js-motion');
+  }
+</script>
+
+<link rel="stylesheet" href="site.css">
+<style>
+  /* Page styles. Tokens, buttons, nav, footer and the chat assistant live in site.css */
+  .js-motion .split { visibility: hidden; }
+
+  /* ---------- Hero ---------- */
+  .hero { position: relative; color: var(--white); }
+  .hero-dark {
+    position: relative; overflow: hidden;
+    background:
+      radial-gradient(45% 40% at 78% 58%, rgba(110, 150, 92, .4) 0%, transparent 100%),
+      linear-gradient(180deg, #070907 0%, #0c110b 34%, #1c2c19 62%, #3a5533 86%, #55724a 100%);
+  }
+  .aurora {
+    position: absolute; left: -8%; top: 30%; width: 560px; height: 560px; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(211, 246, 91, .16), transparent);
+    filter: blur(40px); pointer-events: none;
+  }
+
+  .hero-main {
+    position: relative; z-index: 1;
+    display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: center; gap: 24px;
+    padding-top: clamp(48px, 7vw, 84px);
+    padding-bottom: 40px;
+  }
+  .hero h1 {
+    font-size: clamp(40px, 5.6vw, 66px);
+    font-weight: 500; line-height: 1.08; letter-spacing: -.045em;
+    text-wrap: balance;
+  }
+  .split .w { display: inline-block; will-change: transform, filter, opacity; }
+  .hero .lede { margin-top: 26px; max-width: 420px; font-size: 14.5px; color: rgba(255, 255, 255, .78); }
+  .hero .btn-arrow { margin-top: 34px; }
+
+  .hero-visual { position: relative; height: 440px; perspective: 1100px; }
+  .hero-visual .glow {
+    position: absolute; left: 50%; top: 50%; width: 460px; height: 380px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(211, 246, 91, .3), transparent);
+    filter: blur(34px);
+  }
+  .parallax { position: absolute; inset: 0; }
+
+  /* The photo is revealed with clip-path, which would clip a box-shadow — so the shadow lives on a wrapper */
+  .photo-shadow { position: absolute; inset: 0 0 0 9%; filter: drop-shadow(0 36px 34px rgba(0, 0, 0, .45)); }
+  .hero-photo { position: absolute; inset: 0; border-radius: 28px; overflow: hidden; }
+  .hero-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; }
+  .hero-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(7, 9, 7, .45) 100%); }
+
+  .tracker {
+    position: absolute; left: 0; bottom: 7%;
+    width: 248px; padding: 14px 16px 12px;
+    border-radius: 16px; background: var(--white); color: var(--ink);
+    box-shadow: 0 26px 50px -20px rgba(0, 0, 0, .6);
+  }
+  .tracker-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .tracker-head small { display: block; font-size: 10px; color: var(--muted); }
+  .tracker-head b { font-size: 13px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+  .tracker-head i { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--forest); color: var(--lime); }
+  .tracker-bar { position: relative; height: 4px; margin: 16px 5px 8px; border-radius: 2px; background: #e6e9e4; }
+  .tracker-fill { position: absolute; inset: 0 auto 0 0; z-index: 1; width: 50%; border-radius: 2px; background: var(--forest-2); }
+  .tracker-fill .knob { position: absolute; right: -11px; top: 50%; display: grid; place-items: center; width: 22px; height: 22px; margin-top: -11px; border-radius: 50%; background: var(--forest); color: var(--lime); border: 2px solid var(--white); box-shadow: 0 4px 10px -2px rgba(29, 58, 27, .6); }
+  .chip [data-stage-label] { display: inline-block; }
+  .tracker-bar span { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: #cfd5cd; border: 2px solid var(--white); }
+  .tracker-bar span.done { background: var(--forest-2); }
+  .tracker-steps { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--muted); }
+  .tracker-steps .on { color: var(--ink); font-weight: 600; }
+
+
+  .chip {
+    position: absolute; display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border-radius: 999px;
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+  }
+  .chip.dark { right: 2%; top: 6%; color: var(--white); background: rgba(11, 15, 11, .55); border: 1px solid rgba(255, 255, 255, .14); backdrop-filter: blur(12px); }
+  .chip.light { right: -2%; bottom: 20%; color: var(--ink); background: var(--white); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, .5); }
+  .chip .ok { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--forest); color: var(--lime); }
+
+  .hero-fade {
+    background: linear-gradient(180deg, #55724a 0%, #8ba680 22%, #c9d8c0 46%, #eef3ea 70%, #fff 100%);
+    color: var(--ink);
+    padding-top: 84px; padding-bottom: 70px;
+  }
+  .hero-fade h2 { font-size: 15px; font-weight: 500; letter-spacing: -.01em; }
+  .partners { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; margin-top: 16px; }
+
+  .wordmark { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; letter-spacing: -.03em; white-space: nowrap; }
+  .partners .wordmark { font-size: 16px; color: var(--forest); }
+  .partners .wordmark:nth-child(even) { color: var(--ink); }
+
+  /* ---------- Sections ---------- */
+  .section { padding-block: clamp(56px, 8vw, 96px); }
+  .section-head { text-align: center; max-width: 640px; margin: 0 auto clamp(32px, 4vw, 48px); }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 7px; margin-bottom: 14px;
+    font-size: 12px; font-weight: 500; color: var(--ink-2);
+  }
+  .eyebrow i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: var(--lime); }
+  .section-head h2, .h2 {
+    font-size: clamp(28px, 3.5vw, 40px);
+    font-weight: 500; line-height: 1.12; letter-spacing: -.04em;
+    text-wrap: balance;
+  }
+  .section-head p { margin-top: 16px; font-size: 14.5px; color: var(--muted); text-wrap: pretty; }
+
+  .trusted { padding-block: 10px clamp(40px, 6vw, 72px); text-align: center; }
+  .trusted h2 { font-size: clamp(20px, 2.2vw, 26px); font-weight: 500; letter-spacing: -.03em; }
+  .logos { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 20px clamp(28px, 5vw, 56px); margin-top: 34px; }
+  .logos .wordmark { font-size: 23px; color: #a3a9a3; transition: color .3s; }
+  .logos .wordmark:hover { color: var(--ink-2); }
+
+  .panel {
+    position: relative; overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 26px;
+  }
+  .panel h3 { font-size: 19px; font-weight: 500; line-height: 1.25; letter-spacing: -.03em; }
+  .panel p { margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+
+  .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+  /* Features: a bento grid — one large live-tracking card, five supporting cards */
+  .feat-head { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 20px 64px; align-items: end; margin-bottom: clamp(32px, 4vw, 48px); }
+  .feat-head p { max-width: 440px; font-size: 15px; color: var(--muted); }
+  .feat-head .more { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 14px; font-weight: 600; color: var(--forest-2); }
+  .feat-head .more svg { transition: transform .3s var(--ease); }
+  .feat-head .more:hover svg { transform: translateX(4px); }
+
+  .bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+  .bento .panel { display: flex; flex-direction: column; min-height: 264px; padding: 28px; }
+  .bento .panel > p { margin-bottom: 24px; max-width: 34em; }
+  .bento h3 { font-size: 21px; }
+  .tag { display: inline-flex; align-items: center; gap: 8px; width: fit-content; margin-bottom: 16px; padding: 5px 12px 5px 6px; border-radius: 999px; background: var(--white); border: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--ink-2); }
+  .tag i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--lime); }
+
+  /* 1 — Live tracking (large, dark) */
+  .bento .b-track { grid-column: span 7; grid-row: span 2; padding-bottom: 0; border: 0; color: var(--white); background: radial-gradient(90% 70% at 100% 100%, #55724a 0%, #1c2c19 50%, #070907 100%); }
+  .b-track .tag { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .14); color: var(--white); }
+  .b-track .tag i { background: var(--lime); color: var(--ink); }
+  .bento .b-track h3 { max-width: 15em; font-size: clamp(24px, 2.6vw, 32px); line-height: 1.15; }
+  .bento .b-track > p { margin-bottom: 0; font-size: 14.5px; color: rgba(255, 255, 255, .7); }
+  .live-map { position: relative; flex: 1; min-height: 300px; margin: 20px -28px 0; }
+  .live-map .dots { position: absolute; inset: 0; background-image: radial-gradient(rgba(255, 255, 255, .22) 1.2px, transparent 1.4px); background-size: 11px 11px; -webkit-mask-image: radial-gradient(75% 85% at 50% 55%, #000 25%, transparent 90%); mask-image: radial-gradient(75% 85% at 50% 55%, #000 25%, transparent 90%); }
+  .live-map > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .map-toast { position: absolute; display: flex; align-items: center; gap: 10px; padding: 9px 14px 9px 9px; border-radius: 14px; background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .16); backdrop-filter: blur(12px); font-size: 12.5px; white-space: nowrap; }
+  .map-toast i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: var(--lime); color: var(--ink); }
+  .map-toast b { display: block; font-weight: 600; }
+  .map-toast span { font-size: 11.5px; color: rgba(255, 255, 255, .65); }
+  .map-toast.one { left: 7%; top: 10%; }
+  .map-toast.two { right: 7%; bottom: 12%; }
+
+  /* 2 — Proof of delivery */
+  .b-proof, .b-claims { grid-column: span 5; }
+  .inset { margin-top: auto; padding: 14px; border-radius: 16px; background: var(--white); border: 1px solid var(--line); box-shadow: var(--shadow-soft); }
+  .proof { display: flex; align-items: center; gap: 14px; }
+  .proof img { flex: none; width: 82px; height: 82px; border-radius: 12px; object-fit: cover; object-position: 62% 72%; }
+  .proof b { display: block; font-size: 14px; font-weight: 600; }
+  .proof small { display: block; font-size: 12px; color: var(--muted); }
+  .proof .signature { margin-top: 6px; color: var(--forest); }
+  .verified { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; margin-left: auto; padding: 5px 10px 5px 6px; border-radius: 999px; background: var(--forest); color: var(--white); font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+  .verified i { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--lime); color: var(--forest); }
+
+  /* 3 — Claims */
+  .claim-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .claim-head b { font-size: 14px; font-weight: 600; }
+  .claim-head span { padding: 4px 10px; border-radius: 999px; background: #f4f9e4; border: 1px solid #dcebaa; font-size: 11.5px; font-weight: 500; color: #3d4a1d; }
+  .claim-steps { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 18px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  .claim-line { position: absolute; left: 16.66%; right: 16.66%; top: 10px; height: 3px; border-radius: 2px; background: #e6e9e4; }
+  .claim-line i { display: block; width: 50%; height: 100%; border-radius: 2px; background: var(--forest-2); }
+  .claim-steps > span { position: relative; display: grid; justify-items: center; gap: 8px; }
+  .claim-steps > span::before { content: ''; width: 22px; height: 22px; border-radius: 50%; background: var(--white); border: 2px solid #dfe3dd; }
+  .claim-steps > span.done::before { background: var(--forest-2); border-color: var(--forest-2); }
+  .claim-steps > span.now::before { background: var(--lime); border-color: var(--lime); box-shadow: 0 0 0 5px rgba(211, 246, 91, .35); }
+  .claim-steps > span.done, .claim-steps > span.now { color: var(--ink); font-weight: 500; }
+
+  /* 4–6 — Notifications, Copilot, dashboard */
+  .b-notify, .b-copilot, .b-insight { grid-column: span 4; }
+  .note-stack { position: relative; height: 96px; margin-top: auto; }
+  .note { position: absolute; inset: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--white); border: 1px solid var(--line); box-shadow: var(--shadow-soft); transform-origin: 50% 0; }
+  .note:nth-child(1) { z-index: 3; }
+  .note:nth-child(2) { z-index: 2; transform: translateY(14px) scale(.94); opacity: .75; }
+  .note:nth-child(3) { z-index: 1; transform: translateY(28px) scale(.88); opacity: .45; }
+  .note i { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border-radius: 11px; background: var(--ink); color: var(--lime); }
+  .note b { display: block; font-size: 13px; font-weight: 600; }
+  .note span { display: block; font-size: 12px; color: var(--muted); }
+
+  .bento .b-copilot { border: 0; background: var(--lime); }
+  .b-copilot .tag { border-color: transparent; }
+  .bento .b-copilot > p { color: rgba(11, 15, 11, .72); }
+  .bubbles { display: grid; gap: 8px; margin-top: auto; }
+  .bub { justify-self: start; max-width: 88%; padding: 9px 13px; border-radius: 14px 14px 14px 4px; background: var(--white); font-size: 13px; line-height: 1.45; }
+  .bub.me { justify-self: end; border-radius: 14px 14px 4px 14px; background: var(--ink); color: var(--white); }
+  .b-copilot .btn { align-self: flex-start; height: 38px; margin-top: 14px; padding: 0 16px; font-size: 13px; }
+
+  .bars { display: flex; align-items: flex-end; gap: 8px; height: 104px; margin-top: auto; }
+  .bars i { flex: 1; height: var(--h); border-radius: 7px 7px 3px 3px; background: #dde3d9; transform-origin: 50% 100%; }
+  .bars i.hi { background: var(--forest-2); }
+  .bars i.top { background: var(--ink); }
+  .bar-days { display: flex; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--muted); }
+  .bar-days span { flex: 1; text-align: center; }
+
+  @media (max-width: 960px) {
+    .feat-head { grid-template-columns: 1fr; }
+    .bento .b-track, .b-proof, .b-claims { grid-column: 1 / -1; }
+    .b-notify, .b-copilot { grid-column: span 6; }
+    .b-insight { grid-column: 1 / -1; }
+  }
+  @media (max-width: 620px) {
+    .b-notify, .b-copilot { grid-column: 1 / -1; }
+    .bento .panel { padding: 22px; }
+    .live-map { margin-inline: -22px; min-height: 260px; }
+    .map-toast.one { left: 4%; }
+    .map-toast.two { right: 4%; }
+    .proof { flex-wrap: wrap; }
+  }
+
+  /* How it works */
+  .how .grid-2 .panel { display: flex; flex-direction: column; padding: 30px 30px 0; }
+  .how h3 { font-size: 22px; max-width: 16em; }
+  .how p { max-width: 32em; }
+  .step { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 18px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+  .step b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: var(--lime); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Product mockups that sit on the bottom edge of each step card */
+  .mock {
+    margin-top: auto; padding: 20px 20px 22px;
+    background: var(--white);
+    border: 1px solid var(--line); border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -1px 2px rgba(11, 15, 11, .03), 0 -18px 40px -24px rgba(11, 15, 11, .22);
+  }
+  .how .grid-2 .panel > p { margin-bottom: 28px; }
+  .mock small { display: block; font-size: 10.5px; color: var(--muted); }
+  .mock b { font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+  .mock-label { margin: 16px 0 8px; font-size: 10.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  .stops { position: relative; display: grid; gap: 12px; }
+  .stops::before { content: ''; position: absolute; left: 10px; top: 24px; bottom: 24px; border-left: 1.5px dashed #cdd3cb; }
+  .stop { position: relative; display: flex; align-items: center; gap: 12px; }
+  .stop i { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--white); border: 1.5px solid var(--forest-2); color: var(--forest-2); }
+  .stop i::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--forest-2); }
+  .stop.end i { background: var(--forest); border-color: var(--forest); color: var(--lime); }
+  .stop.end i::after { content: none; }
+
+  .sizes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .size { display: grid; justify-items: center; align-content: end; gap: 6px; height: 78px; padding: 10px 6px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); font-size: 12px; font-weight: 600; color: var(--ink); }
+  .size svg { color: var(--forest-2); }
+  .size.on { background: var(--forest); border-color: var(--forest); color: var(--white); box-shadow: 0 14px 24px -14px rgba(29, 58, 27, .8); }
+  .size.on svg { color: var(--lime); }
+  .size.on small { color: rgba(255, 255, 255, .65); }
+  .size small { font-weight: 400; margin-top: -4px; }
+
+  .speeds { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
+  .speeds span { position: relative; z-index: 1; padding: 7px 4px; text-align: center; font-size: 11.5px; color: var(--muted); transition: color .3s; }
+  .speeds span.on { color: var(--ink); font-weight: 600; }
+  .speeds .thumb { position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 999px; background: var(--white); box-shadow: 0 1px 2px rgba(11, 15, 11, .08), 0 6px 14px -8px rgba(11, 15, 11, .3); transform: translateX(100%); }
+  .mock-btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; margin-top: 16px; border-radius: 999px; background: var(--lime); font-size: 13px; font-weight: 600; }
+
+  .mock-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .mock-head b { font-variant-numeric: tabular-nums; }
+  .status { display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px 7px 11px; border-radius: 999px; background: var(--forest); color: var(--white); font-size: 11px; font-weight: 500; white-space: nowrap; }
+  .timeline { position: relative; margin-top: 18px; }
+  .timeline::before, .tl-fill { content: ''; position: absolute; left: 10px; top: 11px; width: 2px; border-radius: 1px; }
+  .timeline::before { bottom: 45px; background: #e3e7e1; }
+  .tl-track { position: absolute; left: 0; top: 11px; bottom: 45px; width: 22px; }
+  .tl-fill { top: 0; height: 66.67%; background: var(--forest-2); }
+  .tl-row { position: relative; display: grid; grid-template-columns: 22px 1fr auto; align-items: start; gap: 12px; height: 56px; }
+  .tl-row i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--forest-2); color: var(--white); }
+  .tl-row.now i { background: var(--lime); color: var(--forest); box-shadow: 0 0 0 4px rgba(211, 246, 91, .35); }
+  .tl-row.todo i { background: var(--white); border: 2px solid #d5dad3; }
+  .tl-row.todo b { color: var(--muted); font-weight: 500; }
+  .tl-row time { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 2px; }
+
+  .coverage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: 24px; margin-top: 16px; padding-block: 0; min-height: 220px; }
+  .coverage .copy { padding-block: 30px; }
+  .coverage .btn-arrow { margin-top: 20px; }
+  .map { position: relative; align-self: stretch; min-height: 220px; }
+  .map .dotfield {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(#c3cac2 1.2px, transparent 1.4px);
+    background-size: 9px 9px;
+    -webkit-mask-image: radial-gradient(60% 70% at 62% 50%, #000 30%, transparent 78%);
+            mask-image: radial-gradient(60% 70% at 62% 50%, #000 30%, transparent 78%);
+  }
+  .map > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .map .route { fill: none; stroke: var(--forest-2); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 1; }
+  .pin { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: var(--white); box-shadow: 0 4px 12px rgba(11, 15, 11, .22); display: grid; place-items: center; }
+  .pin::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--c, var(--forest-2)); }
+  .pin.hub { width: 32px; height: 32px; margin: -16px 0 0 -16px; background: var(--forest); color: var(--lime); box-shadow: 0 0 0 6px rgba(47, 90, 42, .14), 0 10px 20px -8px rgba(29, 58, 27, .7); }
+  .pin.hub::after { content: none; }
+  .ticket {
+    position: absolute; left: 4%; top: 50%; transform: translateY(-50%);
+    width: 190px; padding: 12px; border-radius: 12px; background: var(--white);
+    box-shadow: 0 24px 44px -20px rgba(11, 15, 11, .35); border: 1px solid var(--line);
+    font-size: 10.5px;
+  }
+  .ticket-row { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; background: var(--card); }
+  .ticket-row + .ticket-row { margin-top: 6px; }
+  .ticket-row i { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--forest); color: var(--lime); flex: none; }
+  .ticket-row b { display: block; font-weight: 600; }
+  .ticket-row span { color: var(--muted); }
+
+  /* Reviews: one featured story next to two columns that scroll in opposite directions */
+  .reviews { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 16px; }
+  .quote { margin: 0; }
+  .quote blockquote { margin: 0; }
+  .stars { display: flex; gap: 3px; color: #e7b008; }
+  .who { display: flex; align-items: center; gap: 12px; }
+  .avatar { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 50%; font-size: 12.5px; font-weight: 600; color: var(--white); background: var(--c, var(--forest)); }
+  .who b { display: block; font-size: 13.5px; font-weight: 600; }
+  .who div span { display: block; font-size: 12px; color: var(--muted); }
+
+  .quote.featured {
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 40px;
+    min-height: 560px; padding: clamp(26px, 3vw, 40px);
+    border-radius: var(--radius-lg); color: var(--white);
+    background: radial-gradient(120% 90% at 0% 100%, #55724a 0%, #1c2c19 48%, #070907 100%);
+  }
+  .quote.featured .mark { position: relative; color: var(--lime); }
+  .quote.featured blockquote { position: relative; margin-top: 22px; font-size: clamp(21px, 2.1vw, 27px); font-weight: 500; line-height: 1.32; letter-spacing: -.03em; text-wrap: balance; }
+  .quote.featured .stars { position: relative; color: var(--lime); margin-bottom: 18px; }
+  .quote.featured .who { position: relative; padding-top: 22px; border-top: 1px solid rgba(255, 255, 255, .14); }
+  .quote.featured .who div span { color: rgba(255, 255, 255, .6); }
+  .quote.featured .avatar { background: var(--lime); color: var(--ink); }
+
+  .review-cols {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+    height: 560px; overflow: hidden;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+            mask-image: linear-gradient(180deg, transparent 0%, #000 12%, #000 88%, transparent 100%);
+  }
+  .review-track { display: flex; flex-direction: column; gap: 16px; will-change: transform; }
+  .review-col:nth-child(2) .review-track { transform: translateY(-80px); }
+  .quote.card { display: flex; flex-direction: column; gap: 14px; padding: 22px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+  .quote.card blockquote { font-size: 14px; line-height: 1.6; color: var(--ink-2); }
+
+  /* FAQ */
+  .faq { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+  .faq-intro { position: sticky; top: 32px; }
+  .faq-intro p { margin-top: 16px; max-width: 360px; font-size: 14.5px; color: var(--muted); }
+  .faq-help { display: flex; align-items: center; gap: 14px; margin-top: 28px; padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); max-width: 380px; }
+  .faq-help i { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 14px; background: var(--ink); color: var(--lime); }
+  .faq-help b { display: block; font-size: 14px; font-weight: 600; }
+  .faq-help span { font-size: 13px; color: var(--muted); }
+  .faq-help .btn { margin-left: auto; height: 38px; padding: 0 16px; font-size: 13px; }
+  .faq-item { border-bottom: 1px solid var(--line); }
+  .faq-item:first-child { border-top: 1px solid var(--line); }
+  .faq-q { display: flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; padding: 22px 4px; text-align: left; font-size: 17px; font-weight: 500; letter-spacing: -.02em; transition: color .2s; }
+  .faq-q:hover { color: var(--forest-2); }
+  .faq-q i { position: relative; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); transition: background .3s, border-color .3s, transform .45s var(--ease); }
+  .faq-q i::before, .faq-q i::after { content: ''; position: absolute; left: 50%; top: 50%; width: 12px; height: 1.8px; margin: -.9px 0 0 -6px; border-radius: 1px; background: var(--ink); transition: background .3s, transform .45s var(--ease); }
+  .faq-q i::after { transform: rotate(90deg); }
+  .faq-q[aria-expanded="true"] i { background: var(--ink); border-color: var(--ink); transform: rotate(180deg); }
+  .faq-q[aria-expanded="true"] i::before, .faq-q[aria-expanded="true"] i::after { background: var(--lime); }
+  .faq-q[aria-expanded="true"] i::after { transform: rotate(0deg); }
+  .faq-a { overflow: hidden; }
+  .faq-a p { padding: 0 60px 24px 4px; font-size: 14.5px; color: var(--muted); }
+  /* Answers are only collapsed once the script has taken over */
+  .js-faq .faq-a { height: 0; }
+  .js-faq .faq-item.open .faq-a { height: auto; }
+
+  /* Contact */
+  .contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; }
+  .contact-info { position: relative; overflow: hidden; display: flex; flex-direction: column; padding: clamp(26px, 3vw, 40px); border-radius: var(--radius-lg); color: var(--white); background: radial-gradient(120% 90% at 100% 100%, #55724a 0%, #1c2c19 48%, #070907 100%); }
+  .contact-info > * { position: relative; }
+  .contact-info .eyebrow { color: rgba(255, 255, 255, .75); }
+  .contact-info .eyebrow i { background: var(--lime); color: var(--ink); }
+  .contact-info > p { margin-top: 16px; max-width: 400px; font-size: 14.5px; color: rgba(255, 255, 255, .72); }
+  .channels { display: grid; gap: 10px; margin-top: auto; padding-top: 36px; }
+  .channel { display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: 16px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); backdrop-filter: blur(8px); text-align: left; transition: background .25s, transform .3s var(--ease); }
+  .channel:hover { background: rgba(255, 255, 255, .11); transform: translateX(4px); }
+  .channel i { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 13px; background: var(--lime); color: var(--ink); }
+  .channel b { display: block; font-size: 14px; font-weight: 600; }
+  .channel span { display: block; font-size: 13px; color: rgba(255, 255, 255, .65); }
+  .channel > svg { margin-left: auto; color: rgba(255, 255, 255, .5); }
+  .contact-form { position: relative; display: grid; gap: 18px; align-content: start; padding: clamp(24px, 3vw, 40px); border-radius: var(--radius-lg); background: var(--card); border: 1px solid var(--line); }
+  .contact-form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .topics { display: flex; flex-wrap: wrap; gap: 8px; }
+  .topics label { cursor: pointer; }
+  .topics input { position: absolute; opacity: 0; pointer-events: none; }
+  .topics span { display: block; padding: 8px 14px; border-radius: 999px; background: var(--white); border: 1px solid #dfe3dd; font-size: 13px; font-weight: 500; color: var(--ink-2); transition: background .2s, border-color .2s, color .2s; }
+  .topics input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--lime); }
+  .topics input:focus-visible + span { outline: 2px solid var(--forest-2); outline-offset: 2px; }
+  .contact-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .contact-foot small { font-size: 12.5px; color: var(--muted); }
+  .sent { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 10px; padding: 24px; text-align: center; border-radius: inherit; background: var(--card); }
+  .sent[hidden] { display: none; }
+  .sent i { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 6px; border-radius: 50%; background: var(--ink); color: var(--lime); }
+  .sent h3 { font-size: 22px; font-weight: 500; letter-spacing: -.03em; }
+  .sent p { max-width: 300px; font-size: 14px; color: var(--muted); }
+
+  /* CTA + footer */
+  .cta {
+    position: relative; overflow: hidden; text-align: center; color: var(--white);
+    margin-inline: max(var(--gutter), calc((100% - 1200px) / 2)); padding: clamp(48px, 7vw, 80px) 24px;
+    border-radius: var(--radius-xl);
+    background: radial-gradient(70% 90% at 50% 120%, #55724a 0%, #1c2c19 45%, #070907 100%);
+  }
+  .cta .h2 { position: relative; }
+  .cta p { position: relative; margin: 16px auto 0; max-width: 440px; font-size: 14.5px; color: rgba(255, 255, 255, .72); }
+  .cta-actions { position: relative; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 14px; margin-top: 30px; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 960px) {
+    .hero-main { grid-template-columns: 1fr; }
+    .hero-visual { height: 360px; max-width: 460px; width: 100%; margin-inline: auto; }
+    .grid-3, .grid-2, .coverage, .reviews, .faq, .contact { grid-template-columns: 1fr; }
+    .feature p { min-height: 0; }
+    .how .panel { min-height: 0; }
+    .coverage .copy { padding-bottom: 0; }
+    .quote.featured { min-height: 0; }
+    .faq-intro { position: static; }
+  }
+  @media (max-width: 620px) {
+    .review-cols { grid-template-columns: 1fr; height: 460px; }
+    .review-col:nth-child(2) { display: none; }
+    .contact-form .row { grid-template-columns: 1fr; }
+    .faq-q { font-size: 16px; padding-block: 18px; }
+    .faq-a p { padding-right: 8px; }
+    .faq-help { flex-wrap: wrap; }
+    .hero-fade { padding-top: 56px; padding-bottom: 48px; }
+    .how .grid-2 .panel { padding: 22px 16px 0; }
+    .mock { padding: 16px 14px 18px; }
+    .logos .wordmark { font-size: 19px; }
+    .chip.dark { right: 4%; top: 4%; }
+    .chip.light { right: 0; bottom: 40%; }
+  }
+</style>
+</head>
+
+<body>
+<!-- Shared icons -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.500C5 14.900 12 21 12 21Z"/><circle cx="12" cy="9.500" r="2.500"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5.500c0 4.300 2.900 7.800 7 9.500 4.100-1.700 7-5.200 7-9.500V6l-7-3Z"/><path d="m9 12 2.200 2.200L15 10.400"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.500-2h7L17 8h3v11H4V8Z"/><circle cx="12" cy="13" r="3.200"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4l4 4v3h-8z"/><circle cx="6.500" cy="17.500" r="1.800"/><circle cx="17" cy="17.500" r="1.800"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4"/></symbol>
+    <symbol id="i-quote" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18v-5.500C4 8.900 6 6.400 9.500 6v2.300C7.800 8.800 7 10 7 11.500h3V18H4Zm10 0v-5.500c0-3.600 2-6.100 5.500-6.500v2.300c-1.700.5-2.500 1.700-2.500 3.200h3V18h-6Z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.500 2.900 6.100 6.600.9-4.800 4.600 1.200 6.600L12 17.500l-5.900 3.200 1.200-6.600L2.500 9.500l6.600-.9L12 2.500Z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7.500 8 5.500 8-5.500"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c5 0 9 3.400 9 7.700s-4 7.700-9 7.700c-1 0-2-.1-2.900-.4L4.500 21l1.100-3.700C4 15.900 3 13.900 3 11.700 3 7.400 7 4 12 4Z"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.500 9.300a2.600 2.600 0 0 1 5 .9c0 1.800-2.500 2.200-2.500 3.800M12 17h.01"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="s-x" viewBox="0 0 24 24" fill="currentColor"><path d="M17.500 3h3.200l-7 8 8.300 10h-6.500l-5-6.100L4.800 21H1.600l7.500-8.600L1.200 3h6.600l4.600 5.600L17.500 3Zm-1.100 16h1.800L7 4.900H5.100L16.400 19Z"/></symbol>
+    <symbol id="s-in" viewBox="0 0 24 24" fill="currentColor"><path d="M4.500 3A1.500 1.500 0 0 0 3 4.500v15A1.500 1.500 0 0 0 4.500 21h15a1.500 1.500 0 0 0 1.500-1.500v-15A1.500 1.500 0 0 0 19.500 3h-15Zm3.300 4.300a1.400 1.400 0 1 1 0 2.800 1.400 1.400 0 0 1 0-2.800ZM6.600 11h2.400v7H6.600v-7Zm4 0h2.300v1c.4-.7 1.300-1.200 2.400-1.200 2 0 2.700 1.300 2.700 3.300V18h-2.400v-3.500c0-.9-.3-1.600-1.200-1.600-1 0-1.400.7-1.400 1.700V18h-2.400v-7Z"/></symbol>
+    <symbol id="s-ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.500" y="3.500" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.800"/><path d="M17 7h.01"/></symbol>
+    <symbol id="s-fb" viewBox="0 0 24 24" fill="currentColor"><path d="M13.500 21v-7.500h2.600l.4-3h-3V8.600c0-.9.300-1.500 1.600-1.500h1.500V4.400c-.3 0-1.200-.1-2.200-.1-2.200 0-3.800 1.400-3.800 3.900v2.300H8v3h2.600V21h2.900Z"/></symbol>
+    <!-- Placeholder wordmark glyphs -->
+    <symbol id="g-ring" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><circle cx="12" cy="12" r="8"/></symbol>
+    <symbol id="g-bars" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="4" width="18" height="4" rx="2"/><rect x="3" y="10" width="12" height="4" rx="2"/><rect x="3" y="16" width="18" height="4" rx="2"/></symbol>
+    <symbol id="g-diamond" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 22 12 12 22 2 12Z"/></symbol>
+    <symbol id="g-half" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a9 9 0 0 1 0 18V3Z"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    <symbol id="g-tri" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 22 20H2Z"/></symbol>
+    <symbol id="g-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+
+  <!-- ================= HERO ================= -->
+  <header class="hero on-dark" id="top">
+    <div class="hero-dark">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="aurora" aria-hidden="true"></div>
+
+      <nav class="nav wrap" data-in aria-label="Primary">
+        <a class="brand" href="#top">
+          <svg width="24" height="24"><use href="#i-box"/></svg>
+          Parcel Payout
+        </a>
+        <div class="nav-links">
+          <a href="#top" aria-current="page">Home</a>
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="track.html">Track</a>
+          <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
+        </div>
+        <div class="nav-actions">
+          <a class="login" href="login.html">Log in</a>
+          <a class="btn" href="register.html">Sign up</a>
+        </div>
+      </nav>
+
+      <div class="hero-main wrap">
+        <div>
+          <h1 class="split">Effortless Delivery for a Faster Tomorrow</h1>
+          <p class="lede" data-in>Book pickups, follow every scan live, and get proof on every drop-off — fast, tracked parcel delivery in one platform.</p>
+          <a class="btn-arrow" href="register.html" data-in>
+            <span class="btn">Start for free</span>
+            <span class="circle"><svg width="16" height="16"><use href="#i-arrow"/></svg></span>
+          </a>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <div class="glow"></div>
+          <div class="parallax">
+            <div class="photo-shadow">
+              <div class="hero-photo">
+                <img src="../public/hero_parcel.jpg" alt="">
+              </div>
+            </div>
+            <div class="tracker">
+              <div class="tracker-head">
+                <div><small>Tracking ID</small><b>TRK-5789-2847</b></div>
+                <i><svg width="16" height="16"><use href="#i-box"/></svg></i>
+              </div>
+              <div class="tracker-bar">
+                <span class="done" style="left:0"></span><span class="done" style="left:50%"></span><span style="left:100%"></span>
+                <div class="tracker-fill"><i class="knob"><svg width="11" height="11"><use href="#i-truck"/></svg></i></div>
+              </div>
+              <div class="tracker-steps"><span>Picked up</span><span class="on">In transit</span><span>Delivered</span></div>
+            </div>
+            <div class="chip dark"><span class="pulse"></span><span data-stage-label>Out for delivery</span></div>
+            <div class="chip light"><span class="ok"><svg width="11" height="11"><use href="#i-check"/></svg></span>Delivered &amp; signed</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-fade wrap">
+      <h2 data-reveal>Meet Our Esteemed Partners &amp; Affiliates</h2>
+      <div class="partners" data-stagger>
+        <span class="wordmark"><svg width="16" height="16"><use href="#g-bars"/></svg>cartwell</span>
+        <span class="wordmark"><svg width="16" height="16"><use href="#g-ring"/></svg>Kitepay</span>
+        <span class="wordmark"><svg width="16" height="16"><use href="#g-diamond"/></svg>Mercato</span>
+        <span class="wordmark"><svg width="16" height="16"><use href="#g-half"/></svg>Shopnest</span>
+        <span class="wordmark"><svg width="16" height="16"><use href="#g-tri"/></svg>bloomly</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ================= TRUSTED ================= -->
+    <section class="trusted wrap">
+      <h2 data-reveal>Trusted by <span data-count="4000">4,000</span>+ Growing Companies</h2>
+      <div class="logos" data-stagger>
+        <span class="wordmark"><svg width="24" height="24"><use href="#g-ring"/></svg>Orbitly</span>
+        <span class="wordmark">harbor</span>
+        <span class="wordmark"><svg width="22" height="22"><use href="#g-dots"/></svg>lumen</span>
+        <span class="wordmark"><svg width="22" height="22"><use href="#g-diamond"/></svg>Stackbox</span>
+        <span class="wordmark">nimbus</span>
+        <span class="wordmark"><svg width="22" height="22"><use href="#g-bars"/></svg>Fieldwork</span>
+      </div>
+    </section>
+
+    <!-- ================= FEATURES ================= -->
+    <section class="section wrap" id="features">
+      <div class="feat-head" data-reveal>
+        <div>
+          <span class="eyebrow"><i><svg width="10" height="10"><use href="#i-box"/></svg></i>Features</span>
+          <h2 class="h2">Modern Delivery Demands Flawless Execution</h2>
+        </div>
+        <div>
+          <p>Getting a parcel from pickup to doorstep takes live data, accountable couriers, and a clear answer when something goes wrong.</p>
+          <a class="more" href="#how">See how it works <svg width="16" height="16"><use href="#i-chevron"/></svg></a>
+        </div>
+      </div>
+
+      <div class="bento" data-stagger>
+        <article class="panel b-track on-dark" data-hover>
+          <span class="tag"><i><svg width="12" height="12"><use href="#i-pin"/></svg></i>Live tracking</span>
+          <h3>Know where every parcel is, every minute.</h3>
+          <p>Each scan is logged door to door, so you and your receiver can follow the whole journey as it happens.</p>
+          <div class="live-map" aria-hidden="true">
+            <div class="dots"></div>
+            <svg viewBox="0 0 600 320" preserveAspectRatio="xMidYMid slice">
+              <path id="live-route" d="M70 250 C 190 250, 200 130, 300 140 S 430 60, 540 74" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="2" stroke-dasharray="5 7" stroke-linecap="round"/>
+              <path id="live-trail" d="M70 250 C 190 250, 200 130, 300 140 S 430 60, 540 74" fill="none" stroke="#d3f65b" stroke-width="2.5" stroke-linecap="round" pathLength="1" stroke-dasharray="0.55 1"/>
+              <circle cx="70" cy="250" r="6" fill="#0c110b" stroke="#d3f65b" stroke-width="2.5"/>
+              <circle cx="540" cy="74" r="8" fill="#d3f65b"/><circle cx="540" cy="74" r="3" fill="#0b0f0b"/>
+              <g id="live-courier" transform="translate(315 137)">
+                <circle r="18" fill="#d3f65b" opacity=".25"/>
+                <circle r="11" fill="#d3f65b" stroke="#0c110b" stroke-width="2.5"/>
+                <path d="M-5 -3h5.5v5.500H-5zM.5 -1.300h2.300l2.200 2.200v1.600H.5z" fill="none" stroke="#0b0f0b" stroke-width="1.300" stroke-linejoin="round"/>
+              </g>
+            </svg>
+            <div class="map-toast one"><i><svg width="15" height="15"><use href="#i-box"/></svg></i><div><b>Picked up</b><span>12 Lake Road · 9:12 AM</span></div></div>
+            <div class="map-toast two"><i><svg width="15" height="15"><use href="#i-truck"/></svg></i><div><b>Out for delivery</b><span>Courier is on the way</span></div></div>
+          </div>
+        </article>
+
+        <article class="panel b-proof" data-hover>
+          <span class="tag"><i><svg width="12" height="12"><use href="#i-camera"/></svg></i>Proof of delivery</span>
+          <h3>Proof on every drop-off.</h3>
+          <p>Couriers confirm each handover before a parcel is marked delivered.</p>
+          <div class="inset proof" aria-hidden="true">
+            <img src="../public/hero_parcel.jpg" alt="">
+            <div>
+              <b>Delivered to Sanzida A.</b>
+              <small>Photo and signature captured</small>
+              <svg class="signature" width="96" height="26" viewBox="0 0 90 26" fill="none"><path class="draw" pathLength="1" d="M3 19c7-13 11-15 12-9s-5 12-2 12 8-14 12-12-2 10 2 10 6-9 10-8 0 7 4 7 8-5 14-5 12 3 30-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="1"/></svg>
+            </div>
+            <span class="verified"><i><svg width="9" height="9"><use href="#i-check"/></svg></i>Verified</span>
+          </div>
+        </article>
+
+        <article class="panel b-claims" data-hover>
+          <span class="tag"><i><svg width="12" height="12"><use href="#i-shield"/></svg></i>Claims</span>
+          <h3>Claims without the back-and-forth.</h3>
+          <p>If something goes wrong, raise a claim and follow it from your dashboard.</p>
+          <div class="inset" aria-hidden="true">
+            <div class="claim-head"><b>Damaged parcel</b><span>In review</span></div>
+            <div class="claim-steps">
+              <div class="claim-line"><i></i></div>
+              <span class="done">Raised</span><span class="now">In review</span><span>Resolved</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel b-notify" data-hover>
+          <span class="tag"><i><svg width="12" height="12"><use href="#i-bolt"/></svg></i>Notifications</span>
+          <h3>Updates the moment they happen.</h3>
+          <p>Status changes reach you in real time, without refreshing.</p>
+          <div class="note-stack" aria-hidden="true">
+            <div class="note"><i><svg width="16" height="16"><use href="#i-truck"/></svg></i><div><b>Out for delivery</b><span>TRK-5789-2847 is on its way</span></div></div>
+            <div class="note"><i><svg width="16" height="16"><use href="#i-box"/></svg></i><div><b>Parcel picked up</b><span>Collected from the sender</span></div></div>
+            <div class="note"><i><svg width="16" height="16"><use href="#i-check"/></svg></i><div><b>Delivered</b><span>Signed by the receiver</span></div></div>
+          </div>
+        </article>
+
+        <article class="panel b-copilot" data-hover>
+          <span class="tag"><i><svg width="12" height="12"><use href="#i-chat"/></svg></i>Copilot</span>
+          <h3>Answers on call, day or night.</h3>
+          <p>Ask about a parcel, a booking, or a claim.</p>
+          <div class="bubbles" aria-hidden="true">
+            <div class="bub me">Where is my parcel?</div>
+            <div class="bub">Out for delivery. Want the full journey?</div>
+          </div>
+          <button type="button" class="btn dark" data-open-chat>Ask Copilot</button>
+        </article>
+
+        <article class="panel b-insight" data-hover>
+          <span class="tag"><i><svg width="12" height="12"><use href="#i-clock"/></svg></i>Dashboard</span>
+          <h3>Every shipment in one view.</h3>
+          <p>See your parcels and how deliveries are moving at a glance.</p>
+          <div aria-hidden="true" style="margin-top:auto">
+            <div class="bars">
+              <i style="--h:38%"></i><i style="--h:56%"></i><i style="--h:44%"></i><i class="hi" style="--h:72%"></i><i style="--h:60%"></i><i class="top" style="--h:100%"></i><i class="hi" style="--h:80%"></i>
+            </div>
+            <div class="bar-days"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ================= HOW IT WORKS ================= -->
+    <section class="section wrap how" id="how" style="padding-top:0">
+      <div class="section-head" data-reveal>
+        <h2>Simple, Fast &amp; Hassle-Free</h2>
+        <p>Sign up, book a pickup, and manage every parcel effortlessly with smart tracking and delivery proof.</p>
+      </div>
+
+      <div class="grid-2" data-stagger>
+        <article class="panel" data-hover>
+          <span class="step"><b>01</b>Book</span>
+          <h3>Book a pickup in seconds.</h3>
+          <p>Enter where it's going, choose a parcel size and a delivery speed, and get a tracking ID right away.</p>
+          <div class="mock" data-mock="book" aria-hidden="true">
+            <div class="stops">
+              <div class="stop"><i></i><div><small>Pickup</small><b>12 Lake Road, Block C</b></div></div>
+              <div class="stop end"><i><svg width="12" height="12"><use href="#i-pin"/></svg></i><div><small>Drop-off</small><b>48 Garden Street, Apt 5</b></div></div>
+            </div>
+            <div class="mock-label">Parcel size</div>
+            <div class="sizes">
+              <div class="size"><svg width="18" height="18"><use href="#i-box"/></svg>Small<small>Up to 1 kg</small></div>
+              <div class="size on"><svg width="24" height="24"><use href="#i-box"/></svg>Medium<small>Up to 5 kg</small></div>
+              <div class="size"><svg width="30" height="30"><use href="#i-box"/></svg>Large<small>Up to 15 kg</small></div>
+            </div>
+            <div class="mock-label">Delivery speed</div>
+            <div class="speeds">
+              <div class="thumb"></div>
+              <span>Standard</span><span class="on">Express</span><span>Same-day</span>
+            </div>
+            <div class="mock-btn">Book pickup <svg width="14" height="14"><use href="#i-arrow"/></svg></div>
+          </div>
+        </article>
+
+        <article class="panel" data-hover>
+          <span class="step"><b>02</b>Track</span>
+          <h3>Follow every scan, live.</h3>
+          <p>From the first pickup scan to the doorstep, each status is logged with a time, so you and your receiver always know where the parcel is.</p>
+          <div class="mock" data-mock="track" aria-hidden="true">
+            <div class="mock-head">
+              <div><small>Tracking ID</small><b>TRK-5789-2847</b></div>
+              <span class="status"><span class="pulse"></span>Out for delivery</span>
+            </div>
+            <div class="timeline">
+              <div class="tl-track"><div class="tl-fill"></div></div>
+              <div class="tl-row"><i><svg width="11" height="11"><use href="#i-check"/></svg></i><div><b>Picked up</b><small>Collected from sender</small></div><time>09:12 AM</time></div>
+              <div class="tl-row"><i><svg width="11" height="11"><use href="#i-check"/></svg></i><div><b>Arrived at sorting hub</b><small>Scanned and sorted for its route</small></div><time>11:40 AM</time></div>
+              <div class="tl-row now"><i><svg width="12" height="12"><use href="#i-truck"/></svg></i><div><b>Out for delivery</b><small>Courier is on the way</small></div><time>02:05 PM</time></div>
+              <div class="tl-row todo"><i></i><div><b>Delivered</b><small>Photo and signature on arrival</small></div><time>By 4:30 PM</time></div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <article class="panel coverage" data-reveal>
+        <div class="copy">
+          <span class="step"><b>03</b>Deliver</span>
+          <h3>Delivered to every doorstep, with proof.</h3>
+          <p>The right courier takes each route and confirms every drop-off with a photo and signature. Ship often? Set a recurring pickup once.</p>
+          <a class="btn-arrow sm" href="register.html">
+            <span class="btn">Create an account</span>
+            <span class="circle"><svg width="13" height="13"><use href="#i-arrow"/></svg></span>
+          </a>
+        </div>
+        <div class="map" aria-hidden="true">
+          <div class="dotfield"></div>
+          <svg viewBox="0 0 400 220" preserveAspectRatio="none">
+            <path class="route" pathLength="1" d="M200 110 C 250 40, 300 40, 332 62"/>
+            <path class="route" pathLength="1" d="M200 110 C 260 120, 290 130, 312 124"/>
+            <path class="route" pathLength="1" d="M200 110 C 270 170, 330 180, 372 160"/>
+          </svg>
+          <span class="pin hub" style="left:50%;top:50%"><svg width="15" height="15"><use href="#i-box"/></svg></span>
+          <span class="pin" style="left:83%;top:28%;--c:#e23b3b"></span>
+          <span class="pin" style="left:78%;top:56.500%;--c:#2f5a2a"></span>
+          <span class="pin" style="left:93%;top:72.700%;--c:#e0a400"></span>
+          <div class="ticket">
+            <div class="ticket-row"><i><svg width="12" height="12"><use href="#i-repeat"/></svg></i><div><b>Recurring pickup</b><span>Every weekday, 10:00</span></div></div>
+            <div class="ticket-row"><i><svg width="12" height="12"><use href="#i-truck"/></svg></i><div><b>Courier assigned</b><span>3 parcels on this route</span></div></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ================= REVIEWS ================= -->
+    <section class="section wrap" id="reviews" style="padding-top:0">
+      <div class="section-head" data-reveal>
+        <span class="eyebrow"><i><svg width="10" height="10"><use href="#i-star"/></svg></i>Reviews</span>
+        <h2>Join <span data-count="16" data-suffix="M+">16M+</span> Parcels Delivered Smarter with Us</h2>
+        <p>Senders, shop owners, and couriers on why they stay.</p>
+      </div>
+
+      <div class="reviews">
+        <figure class="quote featured" data-reveal>
+          <div class="hero-grid" aria-hidden="true"></div>
+          <div>
+            <svg class="mark" width="44" height="44"><use href="#i-quote"/></svg>
+            <blockquote>Booking a pickup takes under a minute, and I can see every scan until the parcel reaches my customer. I recommend it to anyone who ships regularly.</blockquote>
+          </div>
+          <div>
+            <div class="stars" aria-label="Rated 5 out of 5"><svg width="16" height="16"><use href="#i-star"/></svg><svg width="16" height="16"><use href="#i-star"/></svg><svg width="16" height="16"><use href="#i-star"/></svg><svg width="16" height="16"><use href="#i-star"/></svg><svg width="16" height="16"><use href="#i-star"/></svg></div>
+            <figcaption class="who"><span class="avatar">ZM</span><div><b>Zain Malik</b><span>Online store owner</span></div></figcaption>
+          </div>
+        </figure>
+
+        <div class="review-cols" data-reveal>
+          <div class="review-col">
+            <div class="review-track" data-marquee="up">
+              <figure class="quote card">
+                <div class="stars" aria-label="Rated 5 out of 5"><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg></div>
+                <blockquote>Having all my pickups, deliveries, and proof photos in one app saves me so much time and takes the stress out of the day.</blockquote>
+                <figcaption class="who"><span class="avatar" style="--c:#b33a3a">RK</span><div><b>Rami Kadir</b><span>Courier</span></div></figcaption>
+              </figure>
+              <figure class="quote card">
+                <div class="stars" aria-label="Rated 5 out of 5"><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg></div>
+                <blockquote>I've tried several delivery services, but this one truly shines. The live status updates mean my customers stop asking where their order is.</blockquote>
+                <figcaption class="who"><span class="avatar" style="--c:#2f5a2a">KA</span><div><b>Khalid Amir</b><span>Operations lead</span></div></figcaption>
+              </figure>
+              <figure class="quote card">
+                <div class="stars" aria-label="Rated 5 out of 5"><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg></div>
+                <blockquote>A parcel arrived damaged once, and the claim was sorted from the dashboard without a single phone call.</blockquote>
+                <figcaption class="who"><span class="avatar" style="--c:#6b4fd8">NS</span><div><b>Nadia Sultana</b><span>Boutique founder</span></div></figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="review-col">
+            <div class="review-track" data-marquee="down">
+              <figure class="quote card">
+                <div class="stars" aria-label="Rated 5 out of 5"><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg></div>
+                <blockquote>Managing shipments used to mean juggling different apps and spreadsheets. Now every parcel and delivery receipt lives in one place.</blockquote>
+                <figcaption class="who"><span class="avatar" style="--c:#1f7a8c">TZ</span><div><b>Tariq Zahir</b><span>Warehouse manager</span></div></figcaption>
+              </figure>
+              <figure class="quote card">
+                <div class="stars" aria-label="Rated 5 out of 5"><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg></div>
+                <blockquote>As a small business owner I was searching for a reliable way to send orders across the city. Same-day delivery changed how we sell.</blockquote>
+                <figcaption class="who"><span class="avatar" style="--c:#c2417a">FN</span><div><b>Faris Nabil</b><span>Bakery owner</span></div></figcaption>
+              </figure>
+              <figure class="quote card">
+                <div class="stars" aria-label="Rated 5 out of 5"><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg><svg width="14" height="14"><use href="#i-star"/></svg></div>
+                <blockquote>My receivers get a clear arrival time and a photo when it lands. Fewer missed deliveries, fewer messages for me.</blockquote>
+                <figcaption class="who"><span class="avatar" style="--c:#c9772e">SR</span><div><b>Sara Rahman</b><span>Marketplace seller</span></div></figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= FAQ ================= -->
+    <section class="section wrap" id="faq" style="padding-top:0">
+      <div class="faq">
+        <div class="faq-intro" data-reveal>
+          <span class="eyebrow"><i><svg width="10" height="10"><use href="#i-help"/></svg></i>FAQ</span>
+          <h2 class="h2">Questions, answered</h2>
+          <p>Everything you need to know about sending, tracking, and delivering with Parcel Payout.</p>
+          <div class="faq-help">
+            <i><svg width="20" height="20"><use href="#i-chat"/></svg></i>
+            <div><b>Still stuck?</b><span>Ask Copilot, any time.</span></div>
+            <button type="button" class="btn dark" data-open-chat>Open chat</button>
+          </div>
+        </div>
+
+        <div class="faq-list" data-reveal>
+          <div class="faq-item open">
+            <h3><button class="faq-q" type="button" aria-expanded="true" aria-controls="faq-1">How do I book a pickup?<i></i></button></h3>
+            <div class="faq-a" id="faq-1"><p>Create a free account, choose New parcel, and enter the pickup and drop-off details along with the parcel weight. You get a tracking ID as soon as the booking is confirmed.</p></div>
+          </div>
+          <div class="faq-item">
+            <h3><button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-2">How can I track my parcel?<i></i></button></h3>
+            <div class="faq-a" id="faq-2"><p>Enter your tracking ID on the Track page. No account is needed. You will see the current status and the full journey, from pickup through to delivery.</p></div>
+          </div>
+          <div class="faq-item">
+            <h3><button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-3">How is the delivery price worked out?<i></i></button></h3>
+            <div class="faq-a" id="faq-3"><p>The price is calculated automatically from the parcel weight and any cash-on-delivery amount, and you see it before you confirm the booking.</p></div>
+          </div>
+          <div class="faq-item">
+            <h3><button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-4">How does proof of delivery work?<i></i></button></h3>
+            <div class="faq-a" id="faq-4"><p>The courier confirms each drop-off before the parcel is marked as delivered, so there is a record of every handover that you can check from your dashboard.</p></div>
+          </div>
+          <div class="faq-item">
+            <h3><button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-5">What if my parcel is damaged or goes missing?<i></i></button></h3>
+            <div class="faq-a" id="faq-5"><p>Raise a claim from the parcel in your dashboard. You can follow the claim there until it is resolved, without phoning anyone.</p></div>
+          </div>
+          <div class="faq-item">
+            <h3><button class="faq-q" type="button" aria-expanded="false" aria-controls="faq-6">How do I become a courier?<i></i></button></h3>
+            <div class="faq-a" id="faq-6"><p>Sign up and choose Deliver parcels. You can sign in right away, and deliveries unlock once an admin has reviewed and approved your application.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= CONTACT ================= -->
+    <section class="section wrap" id="contact" style="padding-top:0">
+      <div class="contact" data-stagger>
+        <div class="contact-info on-dark">
+          <div class="hero-grid" aria-hidden="true"></div>
+          <span class="eyebrow"><i><svg width="10" height="10"><use href="#i-mail"/></svg></i>Contact us</span>
+          <h2 class="h2">Let's get your parcels moving</h2>
+          <p>Questions about shipping, a delivery in progress, or partnering with us? Pick the channel that suits you.</p>
+
+          <div class="channels">
+            <button type="button" class="channel" data-open-chat>
+              <i><svg width="20" height="20"><use href="#i-chat"/></svg></i>
+              <div><b>Chat with Copilot</b><span>Instant answers, around the clock</span></div>
+              <svg width="18" height="18"><use href="#i-chevron"/></svg>
+            </button>
+            <a class="channel" href="mailto:support@parcelpayout.example">
+              <i><svg width="20" height="20"><use href="#i-mail"/></svg></i>
+              <div><b>Email support</b><span>support@parcelpayout.example</span></div>
+              <svg width="18" height="18"><use href="#i-chevron"/></svg>
+            </a>
+            <a class="channel" href="#faq">
+              <i><svg width="20" height="20"><use href="#i-help"/></svg></i>
+              <div><b>Read the FAQ</b><span>Booking, tracking, claims and more</span></div>
+              <svg width="18" height="18"><use href="#i-chevron"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <form class="contact-form" id="contact-form">
+          <div class="row">
+            <div class="field"><label for="c-name">Full name</label><input class="input" id="c-name" name="name" autocomplete="name" placeholder="Your name" required></div>
+            <div class="field"><label for="c-email">Email</label><input class="input" id="c-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required></div>
+          </div>
+          <div class="field">
+            <span class="field-label" id="c-topic">What is it about?</span>
+            <div class="topics" role="radiogroup" aria-labelledby="c-topic">
+              <label><input type="radio" name="topic" value="sending" checked><span>Sending a parcel</span></label>
+              <label><input type="radio" name="topic" value="tracking"><span>A delivery in progress</span></label>
+              <label><input type="radio" name="topic" value="courier"><span>Becoming a courier</span></label>
+              <label><input type="radio" name="topic" value="other"><span>Something else</span></label>
+            </div>
+          </div>
+          <div class="field"><label for="c-track">Tracking ID <span class="hint">(optional)</span></label><input class="input" id="c-track" name="trackingId" placeholder="TRK-..."></div>
+          <div class="field"><label for="c-msg">Message</label><textarea class="input" id="c-msg" name="message" placeholder="How can we help?" required></textarea></div>
+          <div class="contact-foot">
+            <small>We reply to every message by email.</small>
+            <button class="btn dark lg" type="submit">Send message <svg width="15" height="15"><use href="#i-arrow"/></svg></button>
+          </div>
+
+          <div class="sent" hidden role="status">
+            <i><svg width="30" height="30"><use href="#i-check"/></svg></i>
+            <h3>Message sent</h3>
+            <p>Thanks for reaching out. We will get back to you by email.</p>
+            <button type="button" class="btn outline" data-reset>Send another</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer on-dark">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <div class="footer-road" aria-hidden="true">
+      <svg class="footer-truck" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4l4 4v3h-8z"/><circle cx="6.5" cy="17.5" r="1.8" fill="#0c110b"/><circle cx="17" cy="17.5" r="1.8" fill="#0c110b"/></svg>
+    </div>
+
+    <div class="wrap footer-cta">
+      <div data-reveal>
+        <h2>Ready to send your <em>first parcel?</em></h2>
+        <p>Create an account in a minute, or check on a parcel that is already on its way.</p>
+        <a class="btn-arrow" href="register.html">
+          <span class="btn">Start for free</span>
+          <span class="circle"><svg width="16" height="16"><use href="#i-arrow"/></svg></span>
+        </a>
+      </div>
+      <div data-reveal>
+        <label class="footer-track-label" for="footer-track-id">Already shipped? Track it here.</label>
+        <form class="footer-track" action="track.html">
+          <input id="footer-track-id" name="id" placeholder="Enter tracking ID" required>
+          <button class="btn" type="submit">Track</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="wrap footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="landing.html"><svg width="22" height="22"><use href="#i-box"/></svg>Parcel Payout</a>
+        <p>Fast, tracked parcel delivery with proof on every drop-off, from pickup to doorstep.</p>
+        <div class="socials">
+          <a href="#" aria-label="X"><svg width="16" height="16"><use href="#s-x"/></svg></a>
+          <a href="#" aria-label="LinkedIn"><svg width="17" height="17"><use href="#s-in"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg width="17" height="17"><use href="#s-ig"/></svg></a>
+          <a href="#" aria-label="Facebook"><svg width="17" height="17"><use href="#s-fb"/></svg></a>
+        </div>
+      </div>
+      <nav class="footer-col" aria-label="Product">
+        <h3>Product</h3>
+        <a href="landing.html#features">Features</a>
+        <a href="landing.html#how">How it works</a>
+        <a href="track.html">Track a parcel</a>
+        <a href="landing.html#reviews">Reviews</a>
+      </nav>
+      <nav class="footer-col" aria-label="Support">
+        <h3>Support</h3>
+        <a href="landing.html#faq">FAQ</a>
+        <a href="landing.html#contact">Contact us</a>
+        <a href="#" data-open-chat>Chat with Copilot</a>
+        <a href="register.html">Become a courier</a>
+      </nav>
+      <nav class="footer-col" aria-label="Account">
+        <h3>Account</h3>
+        <a href="login.html">Log in</a>
+        <a href="register.html">Create account</a>
+        <a href="dashboard.html">Dashboard</a>
+      </nav>
+    </div>
+
+    <div class="footer-word" aria-hidden="true">Parcel Payout</div>
+
+    <div class="wrap footer-bottom">
+      <span>© 2026 Parcel Payout. All rights reserved.</span>
+      <nav aria-label="Legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Cookies</a></nav>
+      <a class="to-top" href="#top">Back to top <i><svg width="15" height="15"><use href="#i-arrow"/></svg></i></a>
+    </div>
+  </footer>
+</div>
+
+<script src="site.js"></script>
+<script>
+/* ---------- FAQ accordion + contact form (work with or without Motion) ---------- */
+(() => {
+  const { motionOn, $, $$, EASE, SPRING } = PP;
+  const animate = motionOn ? Motion.animate : null;
+
+  document.documentElement.classList.add('js-faq');
+  const setItem = (item, open) => {
+    const panel = $('.faq-a', item);
+    $('.faq-q', item).setAttribute('aria-expanded', String(open));
+    if (!animate) { item.classList.toggle('open', open); return; }
+    if (open) {
+      item.classList.add('open');
+      animate(panel, { height: [0, panel.scrollHeight], opacity: [0, 1] }, { duration: 0.45, ease: EASE })
+        .then(() => { panel.style.height = 'auto'; });
+    } else {
+      animate(panel, { height: [panel.offsetHeight, 0], opacity: [1, 0] }, { duration: 0.35, ease: EASE })
+        .then(() => { item.classList.remove('open'); panel.style.height = ''; });
+    }
+  };
+  $$('.faq-item').forEach((item) => {
+    $('.faq-q', item).addEventListener('click', () => {
+      const open = !item.classList.contains('open');
+      $$('.faq-item.open').forEach((other) => { if (other !== item) setItem(other, false); });
+      setItem(item, open);
+    });
+  });
+
+  // Design preview: the form shows its success state but does not send anything.
+  const form = $('#contact-form');
+  const sent = $('.sent', form);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    sent.hidden = false;
+    if (animate) {
+      animate(sent, { opacity: [0, 1] }, { duration: 0.3 });
+      animate($('i', sent), { scale: [0, 1], rotate: [-45, 0] }, { type: 'spring', stiffness: 260, damping: 16, delay: 0.1 });
+    }
+  });
+  $('[data-reset]', form).addEventListener('click', () => { form.reset(); sent.hidden = true; });
+})();
+
+/* ---------- Page animations ---------- */
+(() => {
+  if (!PP.motionOn) return;
+
+  const { animate, inView, scroll, stagger, hover } = Motion;
+  const { $, $$, EASE, SPRING, VIEW } = PP;
+  const wait = (s) => new Promise((r) => setTimeout(r, s * 1000));
+  const done = (animation) => new Promise((r) => animation.then(() => r()));
+
+  /* ---------- Hero entrance: soft focus-in text, photo wipes up ---------- */
+  const h1 = $('.split');
+  h1.innerHTML = h1.textContent.trim().split(/\s+/).map((w) => `<span class="w">${w}</span>`).join(' ');
+  const words = $$('.w', h1);
+  words.forEach((w) => { w.style.opacity = 0; });
+  h1.style.visibility = 'visible';
+
+  const photo = $('.hero-photo');
+  const tracker = $('.tracker');
+  const stageChip = $('.chip.dark');
+  const signed = $('.chip.light');
+  const HIDDEN_CLIP = 'inset(100% 0% 0% 0% round 28px)';
+  photo.style.clipPath = HIDDEN_CLIP;
+  [tracker, stageChip, signed].forEach((el) => { el.style.opacity = 0; });
+
+  animate('.nav', { opacity: [0, 1], y: [-12, 0] }, { duration: 0.8, ease: EASE });
+  animate(words, { opacity: [0, 1], y: [22, 0], filter: ['blur(12px)', 'blur(0px)'] },
+    { duration: 1, ease: EASE, delay: stagger(0.06, { startDelay: 0.1 }) });
+  animate('.hero-main [data-in]', { opacity: [0, 1], y: [16, 0], filter: ['blur(8px)', 'blur(0px)'] },
+    { duration: 0.9, ease: EASE, delay: stagger(0.12, { startDelay: 0.6 }) });
+
+  animate(photo, { clipPath: [HIDDEN_CLIP, 'inset(0% 0% 0% 0% round 28px)'] }, { duration: 1.3, ease: EASE, delay: 0.3 });
+  animate('.hero-photo img', { scale: [1.25, 1] }, { duration: 1.9, ease: EASE, delay: 0.3 });
+  animate('.hero-visual .glow', { opacity: [0, 1] }, { duration: 1.6, delay: 0.5 });
+  animate(tracker, { opacity: [0, 1], y: [20, 0] }, { duration: 0.8, ease: EASE, delay: 1.2 });
+  animate(stageChip, { opacity: [0, 1], y: [-10, 0] }, { duration: 0.7, ease: EASE, delay: 1.4 });
+
+  // Slow drifting light behind the headline
+  animate('.aurora', { x: [0, 90, 20, 0], y: [0, -50, 40, 0], scale: [1, 1.15, 0.95, 1] },
+    { duration: 18, ease: 'easeInOut', repeat: Infinity });
+
+  // The photo drifts a little slower than the page on scroll
+  scroll(animate('.parallax', { y: [0, -50] }, { ease: 'linear' }),
+    { target: $('.hero-dark'), offset: ['start start', 'end start'] });
+
+  /* ---------- Hero story loop: the parcel travels Picked up → In transit → Delivered ---------- */
+  const fill = $('.tracker-fill');
+  const dots = $$('.tracker-bar > span');
+  const stepLabels = $$('.tracker-steps span');
+  const stageLabel = $('[data-stage-label]');
+  const STAGES = ['Picked up', 'Out for delivery', 'Delivered'];
+  const setStage = (i) => {
+    dots.forEach((d, j) => d.classList.toggle('done', j <= i));
+    stepLabels.forEach((l, j) => l.classList.toggle('on', j === i));
+    stageLabel.textContent = STAGES[i];
+    animate(stageLabel, { opacity: [0, 1], y: [6, 0] }, { duration: 0.4, ease: EASE });
+  };
+  const travel = (from, to) => done(animate(fill, { width: [`${from}%`, `${to}%`] }, { duration: 1.8, ease: 'easeInOut' }));
+
+  (async () => {
+    await wait(2.4);
+    for (;;) {
+      fill.style.width = '0%';
+      setStage(0);
+      await done(animate(fill, { opacity: [0, 1] }, { duration: 0.3 }));
+      await wait(1.1);
+      await travel(0, 50);
+      setStage(1);
+      await wait(1.5);
+      await travel(50, 100);
+      setStage(2);
+      animate(signed, { opacity: [0, 1], scale: [0.8, 1], y: [10, 0] }, SPRING);
+      await wait(3.2);
+      animate(signed, { opacity: 0, y: 6 }, { duration: 0.35 });
+      await done(animate(fill, { opacity: 0 }, { duration: 0.35 }));
+    }
+  })();
+
+  /* ---------- Features bento ---------- */
+  // Live tracking: the courier drives the route on a loop, leaving a lime trail
+  const liveRoute = $('#live-route');
+  const liveTrail = $('#live-trail');
+  const liveCourier = $('#live-courier');
+  const liveLength = liveRoute.getTotalLength();
+  animate(0, 1, {
+    duration: 9, ease: 'easeInOut', repeat: Infinity, repeatDelay: 1.2,
+    onUpdate: (p) => {
+      const point = liveRoute.getPointAtLength(liveLength * p);
+      liveCourier.setAttribute('transform', `translate(${point.x} ${point.y})`);
+      liveTrail.setAttribute('stroke-dasharray', `${p} 1`);
+    },
+  });
+  const toasts = $$('.map-toast');
+  toasts.forEach((t) => { t.style.opacity = 0; });
+  inView($('.live-map'), () => {
+    animate(toasts, { opacity: [0, 1], y: [14, 0], scale: [0.92, 1] }, { ...SPRING, delay: stagger(0.5, { startDelay: 0.5 }) });
+  }, VIEW);
+
+  // Claims: progress line fills to the current step
+  const claimFill = $('.claim-line i');
+  claimFill.style.width = '0%';
+  inView($('.b-claims'), () => {
+    animate(claimFill, { width: ['0%', '50%'] }, { duration: 1.1, ease: 'easeInOut', delay: 0.5 });
+  }, VIEW);
+
+  // Notifications: the front card drops to the back of the stack every few seconds
+  const notes = $$('.note');
+  const SLOTS = [{ y: 0, scale: 1, opacity: 1 }, { y: 14, scale: 0.94, opacity: 0.75 }, { y: 28, scale: 0.88, opacity: 0.45 }];
+  const order = notes.map((_, i) => i);
+  setInterval(() => {
+    order.push(order.shift());
+    order.forEach((n, slot) => {
+      notes[n].style.zIndex = notes.length - slot;
+      animate(notes[n], SLOTS[slot], { type: 'spring', stiffness: 240, damping: 24 });
+    });
+  }, 2600);
+
+  // Copilot bubbles pop in like a real exchange; dashboard bars grow from the baseline
+  const bubs = $$('.bub');
+  bubs.forEach((b) => { b.style.opacity = 0; });
+  inView($('.b-copilot'), () => {
+    animate(bubs, { opacity: [0, 1], y: [10, 0], scale: [0.9, 1] }, { ...SPRING, delay: stagger(0.7, { startDelay: 0.5 }) });
+  }, VIEW);
+  const bars = $$('.bars i');
+  bars.forEach((b) => { b.style.transform = 'scaleY(0)'; });
+  inView($('.b-insight'), () => {
+    animate(bars, { scaleY: [0, 1] }, { type: 'spring', stiffness: 160, damping: 18, delay: stagger(0.07, { startDelay: 0.4 }) });
+  }, VIEW);
+
+  // Signature + map routes draw themselves in
+  $$('.draw, .route').forEach((path) => {
+    path.style.strokeDashoffset = 1;
+    inView(path.closest('.panel'), () => {
+      animate(path, { strokeDashoffset: [1, 0] }, { duration: 1.5, ease: 'easeInOut', delay: 0.4 });
+    }, VIEW);
+  });
+
+  $$('.pin').forEach((pin, i) => {
+    pin.style.opacity = 0;
+    inView(pin.closest('.panel'), () => {
+      animate(pin, { opacity: [0, 1], scale: [0, 1] }, { ...SPRING, delay: 0.3 + i * 0.35 });
+    }, VIEW);
+  });
+
+  animate('.ticket', { y: ['-50%', '-54%'] }, { duration: 3, ease: 'easeInOut', repeat: Infinity, repeatType: 'mirror' });
+
+  /* ---------- Hover: springy lift on cards ---------- */
+  if (hover) {
+    $$('[data-hover]').forEach((card) => {
+      hover(card, () => {
+        animate(card, { y: -6 }, SPRING);
+        return () => animate(card, { y: 0 }, SPRING);
+      });
+    });
+  }
+
+  /* ---------- How it works: booking + tracking mockups ---------- */
+  // Speed selector cycles through the three options
+  const speeds = $$('.speeds span');
+  const thumb = $('.speeds .thumb');
+  let speed = 1;
+  setInterval(() => {
+    const from = speed;
+    speed = (speed + 1) % speeds.length;
+    speeds.forEach((s, i) => s.classList.toggle('on', i === speed));
+    animate(thumb, { x: [`${from * 100}%`, `${speed * 100}%`] }, { type: 'spring', stiffness: 320, damping: 28 });
+  }, 2200);
+
+  // Timeline fills up to the current scan, then each step pops in
+  const tlFill = $('.tl-fill');
+  const steps = $$('.tl-row i');
+  tlFill.style.height = '0%';
+  steps.forEach((s) => { s.style.opacity = 0; });
+  inView($('[data-mock="track"]'), () => {
+    animate(tlFill, { height: ['0%', '66.67%'] }, { duration: 1.4, ease: 'easeInOut', delay: 0.5 });
+    animate(steps, { opacity: [0, 1], scale: [0, 1] }, { ...SPRING, delay: stagger(0.4, { startDelay: 0.4 }) });
+  }, VIEW);
+
+  /* ---------- Reviews: two columns scroll in opposite directions, pause on hover ---------- */
+  $$('[data-marquee]').forEach((track) => {
+    [...track.children].forEach((card) => {
+      const clone = card.cloneNode(true);
+      clone.setAttribute('aria-hidden', 'true');
+      track.append(clone);
+    });
+    track.style.paddingBottom = '16px'; // one extra gap so -50% lands exactly on the loop point
+    const up = track.dataset.marquee === 'up';
+    const loop = animate(track, { y: up ? ['0%', '-50%'] : ['-50%', '0%'] }, { duration: 32, ease: 'linear', repeat: Infinity });
+    track.addEventListener('pointerenter', () => loop.pause());
+    track.addEventListener('pointerleave', () => loop.play());
+  });
+})();
+</script>
+</body>
+</html>

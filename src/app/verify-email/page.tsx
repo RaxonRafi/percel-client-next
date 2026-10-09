@@ -4,10 +4,8 @@ import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
+import { AuthShell, SubmitButton } from '@/components/auth/auth-shell';
+import { Icon } from '@/components/icon-sprite';
 
 type State = 'verifying' | 'done' | 'failed' | 'missing';
 
@@ -57,74 +55,65 @@ function VerifyContent() {
   }
 
   if (state === 'verifying') {
-    return <p className="text-sm text-ink-3">Confirming your email address…</p>;
+    return <p>Confirming your email address…</p>;
   }
 
   if (state === 'done') {
     return (
-      <>
-        <h1 className="font-display mb-2 text-2xl font-bold">Email confirmed</h1>
-        <p className="mb-6 text-sm text-ink-2">{message}</p>
-        <Button asChild size="lg" className="w-full">
-          <Link href="/login">Sign in</Link>
-        </Button>
-      </>
+      <div className="auth-done" role="status">
+        <i><Icon name="i-check" size={34} /></i>
+        <h2>Email confirmed</h2>
+        <p>{message}</p>
+        <Link className="btn dark" href="/login">Sign in</Link>
+      </div>
     );
   }
 
   return (
     <>
-      <h1 className="font-display mb-2 text-2xl font-bold">
-        {state === 'missing' ? 'Confirm your email' : 'Link not valid'}
-      </h1>
-      <p className="mb-6 text-sm text-ink-2">
+      <h1 data-in>{state === 'missing' ? 'Confirm your email' : 'Link not valid'}</h1>
+      <p data-in>
         {state === 'missing'
           ? 'Open the link from your confirmation email, or request a new one below.'
           : message}
       </p>
 
       {resent ? (
-        <p className="text-sm text-green">
-          If that address needs confirming, a new link is on its way.
-        </p>
+        <div className="notice" style={{ marginTop: 30 }}>
+          <Icon name="i-info" size={16} />
+          <span>If that address needs confirming, a new link is on its way.</span>
+        </div>
       ) : (
-        <form onSubmit={resend} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+        <form onSubmit={resend}>
+          <div className="field" data-in>
+            <label htmlFor="email">Email</label>
+            <div className="input-wrap">
+              <Icon name="i-mail" size={18} />
+              <input
+                className="input"
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
           </div>
-          <Button type="submit" size="lg" className="w-full" disabled={busy}>
-            {busy ? 'Sending…' : 'Send a new link'}
-          </Button>
+          <SubmitButton loading={busy} loadingLabel="Sending…">Send a new link</SubmitButton>
         </form>
       )}
-
-      <p className="mt-4 text-center text-sm text-ink-3">
-        <Link href="/login" className="text-accent hover:underline">
-          Back to sign in
-        </Link>
-      </p>
     </>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface px-4">
-      <Card className="w-full max-w-md">
-        <Link href="/" className="font-display mb-6 block text-xl font-extrabold">
-          Parcel <span className="text-accent">Payout</span>
-        </Link>
-        <Suspense fallback={<p className="text-sm text-ink-3">Loading…</p>}>
-          <VerifyContent />
-        </Suspense>
-      </Card>
-    </div>
+    <AuthShell switchPrompt="Already confirmed?" switchHref="/login" switchLabel="Sign in">
+      <Suspense fallback={<p>Loading…</p>}>
+        <VerifyContent />
+      </Suspense>
+    </AuthShell>
   );
 }

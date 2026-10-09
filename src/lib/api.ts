@@ -386,6 +386,22 @@ export const api = {
       method: 'DELETE',
     }),
 
+  /* ------------------------------------------------------------- Contact */
+
+  /** Public. Emails the support inbox; nothing is stored. */
+  sendContactMessage: (payload: {
+    name: string;
+    email: string;
+    topic: 'sending' | 'tracking' | 'courier' | 'other';
+    trackingId?: string;
+    message: string;
+  }) =>
+    request<MessageResponse>('/contact', {
+      method: 'POST',
+      body: payload,
+      auth: false,
+    }),
+
   /* -------------------------------------------------------------- System */
 
   /** `GET /api` — plain-text health probe. */

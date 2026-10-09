@@ -1,33 +1,45 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { setAuth } from '@/lib/auth-storage';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import type { Role } from '@/lib/types';
+import { AuthShell, PasswordField, SubmitButton, shake } from '@/components/auth/auth-shell';
+import { Icon } from '@/components/icon-sprite';
 
 /**
  * Only these two are meaningful on a public registration: any other role sent
  * without an admin token is ignored and the account is created as SENDER.
  * DELIVERY_PERSONNEL lands at PENDING_DELIVERY until an admin approves it.
  */
-const INTENTS: { role: Role; title: string; blurb: string }[] = [
-  { role: 'SENDER', title: 'Send parcels', blurb: 'Book shipments and track them.' },
-  {
-    role: 'DELIVERY_PERSONNEL',
-    title: 'Deliver parcels',
-    blurb: 'Apply as a delivery partner — an admin reviews your application.',
-  },
+const INTENTS: { role: Role; title: string; blurb: string; icon: string }[] = [
+  { role: 'SENDER', title: 'Send parcels', blurb: 'Book shipments and track them.', icon: 'i-box' },
+  { role: 'DELIVERY_PERSONNEL', title: 'Deliver parcels', blurb: 'Apply as a delivery partner.', icon: 'i-truck' },
 ];
+
+const STRENGTH = [
+  { label: 'Use 8 or more characters', color: '#c0392b', width: 0 },
+  { label: 'Weak', color: '#c0392b', width: 25 },
+  { label: 'Fair', color: '#d68910', width: 50 },
+  { label: 'Good', color: '#7a9b1f', width: 75 },
+  { label: 'Strong', color: '#2f5a2a', width: 100 },
+];
+
+/** A rough guide for the meter only — the API enforces the real password rules. */
+function passwordStrength(value: string) {
+  if (!value) return STRENGTH[0];
+  let score = 0;
+  if (value.length >= 8) score += 1;
+  if (value.length >= 12) score += 1;
+  if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score += 1;
+  if (/\d/.test(value) && /[^A-Za-z0-9]/.test(value)) score += 1;
+  return STRENGTH[Math.max(score, 1)];
+}
 
 export default function RegisterPage() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -37,6 +49,9 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const isCourier = form.role === 'DELIVERY_PERSONNEL';
+  const strength = passwordStrength(form.password);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,98 +69,121 @@ export default function RegisterPage() {
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Registration failed');
+      shake(formRef.current);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface px-4 py-10">
-      <Card className="w-full max-w-md">
-        <Link href="/" className="font-display mb-6 block text-xl font-extrabold">
-          Parcel <span className="text-accent">Payout</span>
-        </Link>
-        <h1 className="font-display mb-2 text-2xl font-bold">Create account</h1>
-        <p className="mb-6 text-sm text-ink-3">Tell us how you plan to use Parcel Payout</p>
+    <AuthShell
+      variant="signup"
+      switchPrompt="Have an account?"
+      switchHref="/login"
+      switchLabel="Sign in"
+      legal="By creating an account you agree to use Parcel Payout responsibly."
+    >
+      <h1 data-in>Create your account</h1>
+      <p data-in>Tell us how you plan to use Parcel Payout.</p>
 
-        <div className="mb-6 grid gap-3 sm:grid-cols-2">
+      <form onSubmit={handleSubmit} ref={formRef}>
+        <div className="roles" role="radiogroup" aria-label="How will you use Parcel Payout?" data-in>
           {INTENTS.map((intent) => (
-            <button
-              key={intent.role}
-              type="button"
-              onClick={() => setForm({ ...form, role: intent.role })}
-              className={cn(
-                'rounded-lg border p-3 text-left transition-colors',
-                form.role === intent.role
-                  ? 'border-accent bg-accent-bg'
-                  : 'border-surface-3 hover:border-ink-3',
-              )}
-            >
-              <span className="block text-sm font-medium">{intent.title}</span>
-              <span className="mt-1 block text-xs text-ink-3">{intent.blurb}</span>
-            </button>
+            <label className="role" key={intent.role}>
+              <input
+                type="radio"
+                name="role"
+                value={intent.role}
+                checked={form.role === intent.role}
+                onChange={() => setForm({ ...form, role: intent.role })}
+              />
+              <span className="role-card">
+                <i><Icon name={intent.icon} size={20} /></i>
+                <span><b>{intent.title}</b><span>{intent.blurb}</span></span>
+                <span className="tick"><Icon name="i-check" size={12} /></span>
+              </span>
+            </label>
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Full name</Label>
-            <Input
+        {isCourier && (
+          <div className="notice">
+            <Icon name="i-info" size={16} />
+            <span>You can sign in right away, but deliveries stay locked until an admin approves your application.</span>
+          </div>
+        )}
+
+        <div className="field" data-in>
+          <label htmlFor="name">Full name</label>
+          <div className="input-wrap">
+            <Icon name="i-user" size={18} />
+            <input
+              className="input"
               id="name"
+              autoComplete="name"
+              placeholder="Your full name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
           </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
+        </div>
+
+        <div className="field-row" data-in>
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <div className="input-wrap">
+              <Icon name="i-mail" size={18} />
+              <input
+                className="input"
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                required
+              />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="phone">
-              Phone {form.role === 'DELIVERY_PERSONNEL' ? '' : '(optional)'}
-            </Label>
-            <Input
-              id="phone"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              required={form.role === 'DELIVERY_PERSONNEL'}
-            />
+          <div className="field">
+            <label htmlFor="phone">Phone {!isCourier && <span className="hint">(optional)</span>}</label>
+            <div className="input-wrap">
+              <Icon name="i-phone" size={18} />
+              <input
+                className="input"
+                id="phone"
+                type="tel"
+                autoComplete="tel"
+                placeholder="Phone number"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                required={isCourier}
+              />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-            />
+        </div>
+
+        <PasswordField
+          id="password"
+          label="Password"
+          value={form.password}
+          onChange={(password) => setForm({ ...form, password })}
+          placeholder="Create a password"
+          autoComplete="new-password"
+        >
+          <div className="strength" aria-live="polite">
+            <div className="strength-bar">
+              <i style={{ width: `${strength.width}%`, background: strength.color }} />
+            </div>
+            <span>{strength.label}</span>
           </div>
-          {form.role === 'DELIVERY_PERSONNEL' && (
-            <p className="text-xs text-ink-3">
-              You can sign in right away, but deliveries stay locked until an admin
-              approves your application.
-            </p>
-          )}
-          {error && <p className="text-sm text-rose-600">{error}</p>}
-          <Button type="submit" size="lg" className="w-full" disabled={loading}>
-            {loading ? 'Creating…' : 'Register'}
-          </Button>
-        </form>
-        <p className="mt-4 text-center text-sm text-ink-3">
-          Already have an account?{' '}
-          <Link href="/login" className="text-accent hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </Card>
-    </div>
+        </PasswordField>
+
+        {error && <p className="form-error" role="alert">{error}</p>}
+
+        <SubmitButton loading={loading} loadingLabel="Creating account…">Create account</SubmitButton>
+      </form>
+    </AuthShell>
   );
 }

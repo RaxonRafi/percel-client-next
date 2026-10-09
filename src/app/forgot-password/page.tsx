@@ -3,10 +3,8 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { api, ApiError } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
+import { AuthShell, SubmitButton } from '@/components/auth/auth-shell';
+import { Icon } from '@/components/icon-sprite';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -29,56 +27,46 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface px-4">
-      <Card className="w-full max-w-md">
-        <Link href="/" className="font-display mb-6 block text-xl font-extrabold">
-          Parcel <span className="text-accent">Payout</span>
-        </Link>
+    <AuthShell switchPrompt="Remembered it?" switchHref="/login" switchLabel="Sign in">
+      {sent ? (
+        <div className="auth-done" role="status">
+          <i><Icon name="i-mail" size={32} /></i>
+          <h2>Check your inbox</h2>
+          {/* The API answers identically either way, so this copy must not
+              imply the address was found. */}
+          <p>
+            If an account exists for <strong>{email}</strong>, a reset link is on its
+            way. The link works once and expires after 30 minutes.
+          </p>
+          <Link className="btn dark" href="/login">Back to sign in</Link>
+        </div>
+      ) : (
+        <>
+          <h1 data-in>Forgot your password?</h1>
+          <p data-in>Enter your email and we will send you a link to set a new one.</p>
 
-        {sent ? (
-          <>
-            <h1 className="font-display mb-2 text-2xl font-bold">Check your inbox</h1>
-            {/* The API answers identically either way, so this copy must not
-                imply the address was found. */}
-            <p className="mb-6 text-sm text-ink-2">
-              If an account exists for <strong>{email}</strong>, a reset link is on its
-              way. The link works once and expires after 30 minutes.
-            </p>
-            <Button asChild size="lg" className="w-full">
-              <Link href="/login">Back to sign in</Link>
-            </Button>
-          </>
-        ) : (
-          <>
-            <h1 className="font-display mb-2 text-2xl font-bold">Forgot your password?</h1>
-            <p className="mb-6 text-sm text-ink-3">
-              Enter your email and we will send you a link to set a new one.
-            </p>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
+          <form onSubmit={handleSubmit}>
+            <div className="field" data-in>
+              <label htmlFor="email">Email</label>
+              <div className="input-wrap">
+                <Icon name="i-mail" size={18} />
+                <input
+                  className="input"
                   id="email"
                   type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
-              {error && <p className="text-sm text-rose-600">{error}</p>}
-              <Button type="submit" size="lg" className="w-full" disabled={loading}>
-                {loading ? 'Sending…' : 'Send reset link'}
-              </Button>
-            </form>
-            <p className="mt-4 text-center text-sm text-ink-3">
-              Remembered it?{' '}
-              <Link href="/login" className="text-accent hover:underline">
-                Sign in
-              </Link>
-            </p>
-          </>
-        )}
-      </Card>
-    </div>
+            </div>
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <SubmitButton loading={loading} loadingLabel="Sending…">Send reset link</SubmitButton>
+          </form>
+        </>
+      )}
+    </AuthShell>
   );
 }

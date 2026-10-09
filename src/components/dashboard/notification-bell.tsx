@@ -75,18 +75,18 @@ export function NotificationBell() {
         onClick={toggle}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
         aria-expanded={open}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink"
+        className="icon-btn"
       >
         <IconBell size={18} />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-white ring-2 ring-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#e34948] px-1 text-[10px] font-bold text-white ring-2 ring-white">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-surface-3 bg-white shadow-xl">
+        <div className="absolute right-0 top-[52px] z-50 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[20px] border border-surface-3 bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-surface-3 px-4 py-3">
             <div className="flex items-center gap-2">
               <h2 className="font-display text-sm font-semibold text-ink">Notifications</h2>

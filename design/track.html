@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track a parcel — Parcel Payout</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/motion@12/dist/motion.js"></script>
+<script>
+  if (window.Motion && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('js-motion');
+  }
+</script>
+
+<link rel="stylesheet" href="site.css">
+<style>
+  /* ---------- Search header ---------- */
+  .track-hero {
+    position: relative; overflow: hidden; color: var(--white);
+    padding-bottom: 150px;
+    background:
+      radial-gradient(60% 70% at 50% 120%, rgba(110, 150, 92, .5) 0%, transparent 100%),
+      linear-gradient(180deg, #070907 0%, #0c110b 45%, #1c2c19 100%);
+  }
+  .track-hero .aurora { position: absolute; left: 50%; top: 30%; width: 620px; height: 420px; margin-left: -310px; border-radius: 50%; background: radial-gradient(closest-side, rgba(211, 246, 91, .13), transparent); filter: blur(40px); pointer-events: none; }
+  .track-head { position: relative; z-index: 1; max-width: 720px; margin: clamp(44px, 6vw, 76px) auto 0; padding-inline: var(--gutter); text-align: center; }
+  .track-head h1 { font-size: clamp(36px, 4.8vw, 58px); font-weight: 500; line-height: 1.06; letter-spacing: -.045em; }
+  .track-head > p { margin: 18px auto 0; max-width: 460px; font-size: 15px; color: rgba(255, 255, 255, .72); }
+  .track-form {
+    position: relative; display: flex; gap: 6px; max-width: 580px; margin: 34px auto 0; padding: 7px;
+    border-radius: 999px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .18); backdrop-filter: blur(12px);
+    transition: border-color .25s, box-shadow .25s, background .25s;
+  }
+  .track-form:focus-within { border-color: var(--lime); background: rgba(255, 255, 255, .11); box-shadow: 0 0 0 5px rgba(211, 246, 91, .14); }
+  .track-form > svg { position: absolute; left: 24px; top: 50%; transform: translateY(-50%); color: rgba(255, 255, 255, .6); pointer-events: none; }
+  .track-form input { flex: 1; min-width: 0; padding: 0 12px 0 50px; border: 0; outline: 0; background: none; color: var(--white); font: inherit; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .track-form input::placeholder { color: rgba(255, 255, 255, .45); }
+  .try { margin-top: 16px; font-size: 13px; color: rgba(255, 255, 255, .6); }
+  .try button { color: var(--lime); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Result ---------- */
+  .track-body { position: relative; z-index: 1; margin-top: -96px; }
+  .track-body [hidden] { display: none !important; }
+  .t-card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); padding: clamp(20px, 2.6vw, 32px); }
+  .t-card h2 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+  .t-label { display: block; font-size: 12px; color: var(--muted); }
+
+  .hold { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; padding: 16px 18px; border-radius: 16px; background: #fdf1ef; border: 1px solid #f3cdc7; color: #8e2a1f; font-size: 14px; }
+  .hold b { display: block; font-weight: 600; }
+  .hold svg { flex: none; margin-top: 2px; }
+
+  .summary { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.5fr); align-items: center; gap: clamp(24px, 4vw, 56px); }
+  .sum-id { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+  .sum-id b { font-size: clamp(22px, 2.4vw, 28px); font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .copy { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 12px; font-weight: 500; color: var(--ink-2); transition: background .2s, color .2s; }
+  .copy:hover { background: var(--ink); color: var(--lime); border-color: var(--ink); }
+  .badge { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; padding: 8px 14px 8px 12px; border-radius: 999px; background: var(--forest); color: var(--white); font-size: 13px; font-weight: 500; }
+  .badge.danger { background: #8e2a1f; }
+  .badge.danger .pulse { background: #ffb4a8; }
+  .badge.danger .pulse::after { border-color: #ffb4a8; }
+  .sum-meta { margin-top: 12px; font-size: 13px; color: var(--muted); }
+
+  .steps { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); margin: 0; padding: 0; list-style: none; }
+  .steps-track { position: absolute; left: 10%; right: 10%; top: 17px; height: 3px; border-radius: 2px; background: #e6e9e4; }
+  .steps-fill { position: absolute; inset: 0 auto 0 0; width: 75%; border-radius: 2px; background: var(--forest-2); }
+  .steps li { position: relative; display: grid; justify-items: center; gap: 10px; text-align: center; font-size: 12.5px; color: var(--muted); }
+  .steps li i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--white); border: 2px solid #dfe3dd; color: #b3bab1; }
+  .steps li.done i { background: var(--forest-2); border-color: var(--forest-2); color: var(--white); }
+  .steps li.now i { background: var(--lime); border-color: var(--lime); color: var(--forest); box-shadow: 0 0 0 6px rgba(211, 246, 91, .32); }
+  .steps li.done, .steps li.now { color: var(--ink); }
+  .steps li.now { font-weight: 600; }
+
+  .t-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+  .t-stack { display: grid; gap: 16px; }
+  .t-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 22px; }
+  .t-head span { font-size: 13px; color: var(--muted); }
+
+  .journey { position: relative; margin: 0; padding: 0; list-style: none; }
+  .journey::before { content: ''; position: absolute; left: 13px; top: 14px; bottom: 44px; width: 2px; border-radius: 1px; background: #e3e7e1; }
+  .journey li { position: relative; display: grid; grid-template-columns: 28px 1fr auto; gap: 14px; padding-bottom: 26px; }
+  .journey li:last-child { padding-bottom: 0; }
+  .journey i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--card); border: 2px solid var(--white); box-shadow: 0 0 0 1px #dfe3dd; color: var(--forest-2); }
+  .journey li.now i { background: var(--lime); color: var(--forest); box-shadow: 0 0 0 5px rgba(211, 246, 91, .35); }
+  .journey b { display: block; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+  .journey p { margin-top: 3px; font-size: 13.5px; color: var(--muted); }
+  .journey time { font-size: 12.5px; color: var(--muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; padding-top: 3px; }
+  .journey time b { font-size: 12.5px; font-weight: 500; color: var(--ink-2); }
+  .journey time br { display: none; }
+
+  .route-map { position: relative; height: 170px; margin: -6px -6px 20px; border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid var(--line); }
+  .route-map .dots { position: absolute; inset: 0; background-image: radial-gradient(#cdd3cb 1.2px, transparent 1.4px); background-size: 10px 10px; -webkit-mask-image: radial-gradient(70% 80% at 50% 50%, #000 30%, transparent 90%); mask-image: radial-gradient(70% 80% at 50% 50%, #000 30%, transparent 90%); }
+  .route-map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stops { position: relative; display: grid; gap: 16px; }
+  .stops::before { content: ''; position: absolute; left: 10px; top: 24px; bottom: 28px; border-left: 1.5px dashed #cdd3cb; }
+  .stop { position: relative; display: flex; align-items: flex-start; gap: 12px; }
+  .stop i { display: grid; place-items: center; flex: none; width: 22px; height: 22px; margin-top: 2px; border-radius: 50%; background: var(--white); border: 1.5px solid var(--forest-2); }
+  .stop i::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--forest-2); }
+  .stop.end i { background: var(--forest); border-color: var(--forest); color: var(--lime); }
+  .stop.end i::after { content: none; }
+  .stop b { display: block; font-size: 14px; font-weight: 600; }
+
+  .details { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 16px; margin: 0; }
+  .details div.full { grid-column: 1 / -1; }
+  .details dt { font-size: 12px; color: var(--muted); }
+  .details dd { margin: 3px 0 0; font-size: 14px; font-weight: 500; }
+  .person { display: flex; align-items: center; gap: 10px; }
+  .person i { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--ink); color: var(--lime); font-style: normal; font-size: 12px; font-weight: 600; }
+
+  /* ---------- Empty / not found / loading ---------- */
+  .t-state { display: grid; justify-items: center; gap: 12px; padding-block: clamp(40px, 6vw, 72px); text-align: center; }
+  .t-state > i { display: grid; place-items: center; width: 76px; height: 76px; margin-bottom: 8px; border-radius: 24px; background: var(--card); border: 1px solid var(--line); color: var(--forest-2); }
+  .t-state.missing > i { background: #fdf1ef; border-color: #f3cdc7; color: #8e2a1f; }
+  .t-state h2 { font-size: 24px; font-weight: 500; letter-spacing: -.03em; }
+  .t-state p { max-width: 400px; font-size: 14.5px; color: var(--muted); }
+  .t-state .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; }
+  .sk { border-radius: 10px; background: linear-gradient(90deg, #eef0ed 0%, #f7f8f6 40%, #eef0ed 80%); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .t-help { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; margin-top: 16px; padding: 22px clamp(20px, 2.6vw, 32px); border-radius: var(--radius-lg); background: var(--card); border: 1px solid var(--line); }
+  .t-help b { display: block; font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+  .t-help span { font-size: 14px; color: var(--muted); }
+  .t-help .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  /* Design-preview state switcher (not part of the product) */
+  .preview { position: fixed; left: 20px; bottom: 20px; z-index: 50; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: rgba(11, 15, 11, .88); backdrop-filter: blur(10px); font-size: 12px; color: rgba(255, 255, 255, .6); box-shadow: 0 16px 30px -14px rgba(11, 15, 11, .6); }
+  .preview > span { padding: 0 8px 0 10px; }
+  .preview button { padding: 6px 12px; border-radius: 999px; color: rgba(255, 255, 255, .75); font-size: 12px; font-weight: 500; }
+  .preview button:hover { color: var(--white); }
+  .preview button[aria-pressed="true"] { background: var(--lime); color: var(--ink); }
+
+  @media (max-width: 960px) {
+    .summary, .t-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 620px) {
+    .track-form .btn { padding: 0 18px; }
+    .track-form input { padding-left: 44px; font-size: 15px; }
+    .track-form > svg { left: 20px; }
+    .steps li { font-size: 10.5px; }
+    .steps li i { width: 30px; height: 30px; }
+    .steps-track { top: 14px; }
+    .journey li { grid-template-columns: 28px 1fr; }
+    .journey time { grid-column: 2; text-align: left; padding-top: 0; }
+    .details { grid-template-columns: 1fr; }
+    .preview > span { display: none; }
+    .preview { left: 12px; bottom: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+</style>
+</head>
+
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.500 4.500"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4l4 4v3h-8z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.1 7-11.5a7 7 0 0 0-14 0C5 14.900 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2.500"/><circle cx="18" cy="6" r="2.500"/><path d="M8.500 18H14a3.500 3.500 0 0 0 0-7h-4a3.500 3.500 0 0 1 0-7h5.500"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.500 11 8.500-7 8.500 7M6 9.500V20h12V9.500"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8.500" y="8.500" width="12" height="12" rx="2.500"/><path d="M15.500 5.500v-.5A1.500 1.500 0 0 0 14 3.500H5A1.500 1.500 0 0 0 3.500 5v9A1.500 1.500 0 0 0 5 15.500h.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.500 2.500 20h19L12 3.500Z"/><path d="M12 10v4.500M12 17.200h.01"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c5 0 9 3.400 9 7.700s-4 7.700-9 7.700c-1 0-2-.1-2.900-.4L4.500 21l1.100-3.700C4 15.900 3 13.900 3 11.700 3 7.400 7 4 12 4Z"/></symbol>
+    <symbol id="s-x" viewBox="0 0 24 24" fill="currentColor"><path d="M17.500 3h3.200l-7 8 8.300 10h-6.500l-5-6.100L4.800 21H1.600l7.500-8.600L1.200 3h6.600l4.600 5.600L17.500 3Zm-1.100 16h1.800L7 4.900H5.100L16.400 19Z"/></symbol>
+    <symbol id="s-in" viewBox="0 0 24 24" fill="currentColor"><path d="M4.500 3A1.500 1.500 0 0 0 3 4.500v15A1.500 1.500 0 0 0 4.500 21h15a1.500 1.500 0 0 0 1.500-1.500v-15A1.500 1.500 0 0 0 19.500 3h-15Zm3.300 4.300a1.400 1.400 0 1 1 0 2.800 1.400 1.400 0 0 1 0-2.800ZM6.600 11h2.400v7H6.600v-7Zm4 0h2.300v1c.4-.7 1.300-1.200 2.400-1.200 2 0 2.700 1.300 2.700 3.300V18h-2.400v-3.500c0-.9-.3-1.600-1.200-1.600-1 0-1.400.7-1.400 1.700V18h-2.400v-7Z"/></symbol>
+    <symbol id="s-ig" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.500" y="3.500" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="3.800"/><path d="M17 7h.01"/></symbol>
+    <symbol id="s-fb" viewBox="0 0 24 24" fill="currentColor"><path d="M13.500 21v-7.500h2.600l.4-3h-3V8.600c0-.9.300-1.500 1.600-1.500h1.500V4.400c-.3 0-1.200-.1-2.200-.1-2.200 0-3.800 1.400-3.800 3.900v2.300H8v3h2.600V21h2.900Z"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+  <!-- ================= SEARCH HEADER ================= -->
+  <header class="track-hero on-dark" id="top">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <div class="aurora" aria-hidden="true"></div>
+
+    <nav class="nav wrap" data-in aria-label="Primary">
+      <a class="brand" href="landing.html"><svg width="24" height="24"><use href="#i-box"/></svg>Parcel Payout</a>
+      <div class="nav-links">
+        <a href="landing.html">Home</a>
+        <a href="landing.html#features">Features</a>
+        <a href="landing.html#how">How it works</a>
+        <a href="track.html" aria-current="page">Track</a>
+        <a href="landing.html#faq">FAQ</a>
+        <a href="landing.html#contact">Contact</a>
+      </div>
+      <div class="nav-actions">
+        <a class="login" href="login.html">Log in</a>
+        <a class="btn" href="register.html">Sign up</a>
+      </div>
+    </nav>
+
+    <div class="track-head">
+      <h1 data-in>Track your parcel</h1>
+      <p data-in>Enter your tracking ID to see where your parcel is right now. No account needed.</p>
+      <form class="track-form" id="track-form" data-in>
+        <svg width="20" height="20"><use href="#i-search"/></svg>
+        <input id="track-input" name="id" placeholder="Enter tracking ID (e.g. TRK-...)" aria-label="Tracking ID" autocomplete="off" required>
+        <button class="btn lg" type="submit">Track</button>
+      </form>
+      <p class="try" data-in>Just looking? Try <button type="button" data-sample>TRK-5789-2847</button></p>
+    </div>
+  </header>
+
+  <main class="track-body wrap">
+    <!-- ---------- Loading ---------- -->
+    <section data-state="loading" hidden aria-label="Loading">
+      <div class="t-card"><div class="sk" style="height:22px;width:34%"></div><div class="sk" style="height:38px;width:52%;margin-top:14px"></div><div class="sk" style="height:60px;margin-top:26px"></div></div>
+      <div class="t-grid">
+        <div class="t-card"><div class="sk" style="height:20px;width:30%"></div><div class="sk" style="height:200px;margin-top:22px"></div></div>
+        <div class="t-card"><div class="sk" style="height:150px"></div><div class="sk" style="height:60px;margin-top:18px"></div></div>
+      </div>
+    </section>
+
+    <!-- ---------- Result (sample data for the design; the app fills this from the API) ---------- -->
+    <section data-state="found" aria-live="polite">
+      <div class="hold" data-hold hidden role="alert">
+        <svg width="20" height="20"><use href="#i-alert"/></svg>
+        <div><b>This parcel is on hold.</b>Contact support for details.</div>
+      </div>
+
+      <div class="t-card summary" data-card>
+        <div>
+          <span class="t-label">Tracking ID</span>
+          <div class="sum-id">
+            <b data-id>TRK-5789-2847</b>
+            <button class="copy" type="button" data-copy><svg width="13" height="13"><use href="#i-copy"/></svg><span>Copy</span></button>
+          </div>
+          <span class="badge" data-badge><span class="pulse"></span><span data-badge-text>Out for delivery</span></span>
+          <p class="sum-meta">Last update: Today, 2:05 PM</p>
+        </div>
+
+        <div>
+          <ol class="steps" aria-label="Delivery progress">
+            <div class="steps-track" aria-hidden="true"><div class="steps-fill"></div></div>
+            <li class="done"><i><svg width="15" height="15"><use href="#i-check"/></svg></i>Booked</li>
+            <li class="done"><i><svg width="15" height="15"><use href="#i-check"/></svg></i>Picked up</li>
+            <li class="done"><i><svg width="15" height="15"><use href="#i-check"/></svg></i>In transit</li>
+            <li class="now" aria-current="step"><i><svg width="16" height="16"><use href="#i-truck"/></svg></i>Out for delivery</li>
+            <li><i><svg width="15" height="15"><use href="#i-home"/></svg></i>Delivered</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="t-grid">
+        <div class="t-card" data-card>
+          <div class="t-head"><h2>Journey</h2><span>4 updates · newest first</span></div>
+          <ol class="journey">
+            <li class="now">
+              <i><svg width="14" height="14"><use href="#i-truck"/></svg></i>
+              <div><b>Out for delivery</b><p>Assigned to Rami for delivery.</p></div>
+              <time><b>Today</b><br>2:05 PM</time>
+            </li>
+            <li>
+              <i><svg width="14" height="14"><use href="#i-route"/></svg></i>
+              <div><b>In transit</b><p>Left the sorting hub.</p></div>
+              <time><b>Today</b><br>11:40 AM</time>
+            </li>
+            <li>
+              <i><svg width="14" height="14"><use href="#i-box"/></svg></i>
+              <div><b>Picked up</b><p>Collected from the sender.</p></div>
+              <time><b>Today</b><br>9:12 AM</time>
+            </li>
+            <li>
+              <i><svg width="14" height="14"><use href="#i-clock"/></svg></i>
+              <div><b>Pending</b><p>Booking confirmed, waiting for pickup.</p></div>
+              <time><b>Yesterday</b><br>6:48 PM</time>
+            </li>
+          </ol>
+        </div>
+
+        <div class="t-stack">
+          <div class="t-card" data-card>
+            <div class="route-map" aria-hidden="true">
+              <div class="dots"></div>
+              <svg viewBox="0 0 400 170" preserveAspectRatio="xMidYMid slice">
+                <path id="route-path" d="M48 132 Q 190 -10 352 62" fill="none" stroke="#cdd3cb" stroke-width="2" stroke-dasharray="5 6" stroke-linecap="round"/>
+                <path id="route-done" d="M48 132 Q 190 -10 352 62" fill="none" stroke="#2f5a2a" stroke-width="2.5" stroke-linecap="round" pathLength="1" stroke-dasharray="0.62 1"/>
+                <circle cx="48" cy="132" r="6" fill="#fff" stroke="#2f5a2a" stroke-width="2.500"/>
+                <circle cx="352" cy="62" r="7" fill="#1d3a1b"/><circle cx="352" cy="62" r="2.500" fill="#d3f65b"/>
+                <g id="route-courier" transform="translate(228 52)">
+                  <circle r="15" fill="#d3f65b" opacity=".35"/>
+                  <circle r="10" fill="#d3f65b" stroke="#fff" stroke-width="2"/>
+                  <path d="M-4.500 -2.500h5v5h-5zM.500 -1h2l2 2v1.500h-4z" fill="none" stroke="#1d3a1b" stroke-width="1.200" stroke-linejoin="round"/>
+                </g>
+              </svg>
+            </div>
+            <div class="stops">
+              <div class="stop"><i></i><div><span class="t-label">Pickup</span><b>12 Lake Road, Block C</b></div></div>
+              <div class="stop end"><i><svg width="12" height="12"><use href="#i-pin"/></svg></i><div><span class="t-label">Delivery</span><b>48 Garden Street, Apt 5</b></div></div>
+            </div>
+          </div>
+
+          <div class="t-card" data-card>
+            <div class="t-head" style="margin-bottom:18px"><h2>Parcel details</h2></div>
+            <dl class="details">
+              <div><dt>Sender</dt><dd>Zain Malik</dd></div>
+              <div><dt>Receiver</dt><dd>Sanzida A.</dd></div>
+              <div class="full"><dt>Out with</dt><dd class="person"><i>R</i>Rami</dd></div>
+              <div class="full"><dt>Description</dt><dd>Two books and a phone case</dd></div>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Not found ---------- -->
+    <section class="t-card t-state missing" data-state="missing" hidden role="alert">
+      <i><svg width="34" height="34"><use href="#i-search"/></svg></i>
+      <h2>Parcel not found</h2>
+      <p>We couldn't find a parcel with the ID <b data-id>TRK-0000-0000</b>. Check the ID for typos and try again.</p>
+      <div class="actions">
+        <button class="btn dark" type="button" data-focus-search>Try another ID</button>
+        <button class="btn outline" type="button" data-open-chat>Ask Copilot</button>
+      </div>
+    </section>
+
+    <!-- ---------- Empty ---------- -->
+    <section class="t-card t-state" data-state="empty" hidden>
+      <i><svg width="34" height="34"><use href="#i-box"/></svg></i>
+      <h2>Where is your parcel?</h2>
+      <p>Enter the tracking ID from your booking confirmation above to see its status and full journey.</p>
+      <div class="actions">
+        <button class="btn dark" type="button" data-sample>See a sample parcel</button>
+      </div>
+    </section>
+
+    <div class="t-help" data-reveal>
+      <div><b>Something not right with this delivery?</b><span>Copilot can help, or sign in to raise a claim from your dashboard.</span></div>
+      <div class="actions">
+        <button class="btn dark" type="button" data-open-chat><svg width="16" height="16"><use href="#i-chat"/></svg>Chat with Copilot</button>
+        <a class="btn outline" href="login.html">Sign in</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer on-dark">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <div class="footer-road" aria-hidden="true">
+      <svg class="footer-truck" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4l4 4v3h-8z"/><circle cx="6.5" cy="17.5" r="1.8" fill="#0c110b"/><circle cx="17" cy="17.5" r="1.8" fill="#0c110b"/></svg>
+    </div>
+
+    <div class="wrap footer-cta">
+      <div data-reveal>
+        <h2>Ready to send your <em>first parcel?</em></h2>
+        <p>Create an account in a minute, or check on a parcel that is already on its way.</p>
+        <a class="btn-arrow" href="register.html">
+          <span class="btn">Start for free</span>
+          <span class="circle"><svg width="16" height="16"><use href="#i-arrow"/></svg></span>
+        </a>
+      </div>
+      <div data-reveal>
+        <label class="footer-track-label" for="footer-track-id">Already shipped? Track it here.</label>
+        <form class="footer-track" action="track.html">
+          <input id="footer-track-id" name="id" placeholder="Enter tracking ID" required>
+          <button class="btn" type="submit">Track</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="wrap footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="landing.html"><svg width="22" height="22"><use href="#i-box"/></svg>Parcel Payout</a>
+        <p>Fast, tracked parcel delivery with proof on every drop-off, from pickup to doorstep.</p>
+        <div class="socials">
+          <a href="#" aria-label="X"><svg width="16" height="16"><use href="#s-x"/></svg></a>
+          <a href="#" aria-label="LinkedIn"><svg width="17" height="17"><use href="#s-in"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg width="17" height="17"><use href="#s-ig"/></svg></a>
+          <a href="#" aria-label="Facebook"><svg width="17" height="17"><use href="#s-fb"/></svg></a>
+        </div>
+      </div>
+      <nav class="footer-col" aria-label="Product">
+        <h3>Product</h3>
+        <a href="landing.html#features">Features</a>
+        <a href="landing.html#how">How it works</a>
+        <a href="track.html">Track a parcel</a>
+        <a href="landing.html#reviews">Reviews</a>
+      </nav>
+      <nav class="footer-col" aria-label="Support">
+        <h3>Support</h3>
+        <a href="landing.html#faq">FAQ</a>
+        <a href="landing.html#contact">Contact us</a>
+        <a href="#" data-open-chat>Chat with Copilot</a>
+        <a href="register.html">Become a courier</a>
+      </nav>
+      <nav class="footer-col" aria-label="Account">
+        <h3>Account</h3>
+        <a href="login.html">Log in</a>
+        <a href="register.html">Create account</a>
+        <a href="dashboard.html">Dashboard</a>
+      </nav>
+    </div>
+
+    <div class="footer-word" aria-hidden="true">Parcel Payout</div>
+
+    <div class="wrap footer-bottom">
+      <span>© 2026 Parcel Payout. All rights reserved.</span>
+      <nav aria-label="Legal"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Cookies</a></nav>
+      <a class="to-top" href="#top">Back to top <i><svg width="15" height="15"><use href="#i-arrow"/></svg></i></a>
+    </div>
+  </footer>
+</div>
+
+<!-- Design-preview only: jump between the page's states -->
+<div class="preview" role="group" aria-label="Preview page state">
+  <span>Preview</span>
+  <button type="button" data-preview="found" aria-pressed="true">Found</button>
+  <button type="button" data-preview="hold" aria-pressed="false">On hold</button>
+  <button type="button" data-preview="missing" aria-pressed="false">Not found</button>
+  <button type="button" data-preview="empty" aria-pressed="false">Empty</button>
+</div>
+
+<script src="site.js"></script>
+<script>
+/* Design preview: results are sample data. In the app, the form calls the public
+   tracking API and fills the same layout. IDs containing "0000" show "not found". */
+(() => {
+  const { motionOn, $, $$, EASE, SPRING } = PP;
+  const animate = motionOn ? Motion.animate : null;
+  const stagger = motionOn ? Motion.stagger : null;
+  const SAMPLE = 'TRK-5789-2847';
+
+  const form = $('#track-form');
+  const input = $('#track-input');
+  const sections = $$('[data-state]');
+  const hold = $('[data-hold]');
+  const badge = $('[data-badge]');
+  const badgeText = $('[data-badge-text]');
+
+  /* ---------- Courier marker follows the route ---------- */
+  const route = $('#route-path');
+  const routeDone = $('#route-done');
+  const courier = $('#route-courier');
+  const routeLength = route.getTotalLength();
+  const placeCourier = (progress) => {
+    const p = route.getPointAtLength(routeLength * progress);
+    courier.setAttribute('transform', `translate(${p.x} ${p.y})`);
+    routeDone.setAttribute('stroke-dasharray', `${progress} 1`);
+  };
+  placeCourier(0.62);
+
+  const playResult = () => {
+    if (!animate) return;
+    animate($$('[data-state="found"] [data-card]'), { opacity: [0, 1], y: [24, 0] }, { duration: 0.7, ease: EASE, delay: stagger(0.09) });
+    animate('.steps-fill', { width: ['0%', '75%'] }, { duration: 1.4, ease: 'easeInOut', delay: 0.3 });
+    animate('.steps li i', { scale: [0.4, 1], opacity: [0, 1] }, { ...SPRING, delay: stagger(0.22, { startDelay: 0.3 }) });
+    animate('.journey li', { opacity: [0, 1], x: [-14, 0] }, { duration: 0.6, ease: EASE, delay: stagger(0.1, { startDelay: 0.5 }) });
+    animate(0, 0.62, { duration: 1.8, ease: 'easeInOut', delay: 0.5, onUpdate: placeCourier });
+  };
+
+  const show = (state, id) => {
+    const view = state === 'hold' ? 'found' : state;
+    sections.forEach((s) => { s.hidden = s.dataset.state !== view; });
+    if (id) $$('[data-id]').forEach((el) => { el.textContent = id; });
+    hold.hidden = state !== 'hold';
+    badge.classList.toggle('danger', state === 'hold');
+    badgeText.textContent = state === 'hold' ? 'On hold' : 'Out for delivery';
+    $$('[data-preview]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.preview === state)));
+    if (view === 'found') playResult();
+    else if (animate && state !== 'loading') animate(`[data-state="${view}"]`, { opacity: [0, 1], y: [20, 0] }, { duration: 0.6, ease: EASE });
+  };
+
+  const track = (rawId) => {
+    const id = rawId.trim().toUpperCase();
+    if (!id) return;
+    input.value = id;
+    history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
+    show('loading');
+    setTimeout(() => show(id.includes('0000') ? 'missing' : 'found', id), 900);
+  };
+
+  form.addEventListener('submit', (e) => { e.preventDefault(); track(input.value); });
+  $$('[data-sample]').forEach((b) => b.addEventListener('click', () => track(SAMPLE)));
+  $$('[data-preview]').forEach((b) => b.addEventListener('click', () => show(b.dataset.preview, b.dataset.preview === 'missing' ? 'TRK-0000-0000' : SAMPLE)));
+  $('[data-focus-search]').addEventListener('click', () => { input.focus(); input.select(); });
+
+  $('[data-copy]').addEventListener('click', async (e) => {
+    const label = $('span', e.currentTarget);
+    try { await navigator.clipboard.writeText($('[data-id]').textContent); label.textContent = 'Copied'; }
+    catch { label.textContent = 'Copy failed'; }
+    setTimeout(() => { label.textContent = 'Copy'; }, 1600);
+  });
+
+  /* ---------- First paint ---------- */
+  if (animate) {
+    animate('.nav', { opacity: [0, 1], y: [-12, 0] }, { duration: 0.8, ease: EASE });
+    animate('.track-head [data-in]', { opacity: [0, 1], y: [18, 0], filter: ['blur(8px)', 'blur(0px)'] },
+      { duration: 0.9, ease: EASE, delay: stagger(0.1, { startDelay: 0.1 }) });
+    animate('.track-hero .aurora', { x: [0, 80, -40, 0], scale: [1, 1.15, 0.95, 1] }, { duration: 16, ease: 'easeInOut', repeat: Infinity });
+  }
+  const initialId = new URLSearchParams(location.search).get('id');
+  if (initialId) track(initialId);
+  else { input.value = SAMPLE; show('found', SAMPLE); }
+})();
+</script>
+</body>
+</html>

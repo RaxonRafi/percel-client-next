@@ -1,31 +1,38 @@
 import type { Metadata } from 'next';
-import { DM_Sans, Poppins } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import './globals.css';
-import './swiftparcel.css';
 import { ChatWidget } from '@/components/chat-widget';
+import { IconSprite } from '@/components/icon-sprite';
 
-const dmSans = DM_Sans({
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-dm-sans',
-});
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  variable: '--font-poppins',
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
-  title: 'Parcel Payout — Claims Platform',
-  description: 'Deliver faster, track smarter',
+  title: 'Parcel Payout — Effortless delivery for a faster tomorrow',
+  description:
+    'Book pickups, follow every scan live, and get proof on every drop-off.',
 };
+
+/**
+ * Runs before first paint. Entrance animations start from a hidden state, and
+ * that state is only applied when this class is present — so with reduced
+ * motion on (or scripts off) every page simply renders in its final state.
+ */
+const MOTION_GATE = `if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('js-motion')`;
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${dmSans.variable} ${poppins.variable} antialiased`}>
+    // The gate script adds a class to <html> before hydration.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: MOTION_GATE }} />
+      </head>
+      <body className={`${inter.variable} antialiased`}>
+        <IconSprite />
         {children}
         <ChatWidget />
       </body>

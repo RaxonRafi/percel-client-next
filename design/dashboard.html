@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview — Parcel Payout</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/motion@12/dist/motion.js"></script>
+<script>
+  if (window.Motion && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('js-motion');
+  }
+</script>
+
+<link rel="stylesheet" href="site.css">
+<style>
+  :root {
+    /* Parcel status colours — one fixed colour per status, used by every chart, dot and badge.
+       Checked for colour-blind separation in this order; always shown with a text label. */
+    --st-pending: #eda100;
+    --st-picked: #2a78d6;
+    --st-transit: #eb6834;
+    --st-out: #4a3aa7;
+    --st-delivered: #008300;
+    --st-cancelled: #e87ba4;
+    --side-w: 264px;
+  }
+  body { background: var(--card); font-size: 14px; }
+  [hidden] { display: none !important; }
+
+  .app { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); min-height: 100dvh; }
+
+  /* ---------- Sidebar ---------- */
+  .side {
+    position: sticky; top: 0; z-index: 40; height: 100dvh;
+    display: flex; flex-direction: column; overflow: hidden;
+    color: var(--white);
+    background: radial-gradient(120% 50% at 0% 100%, rgba(110, 150, 92, .42) 0%, transparent 100%), linear-gradient(180deg, #070907 0%, #0c110b 60%, #131d10 100%);
+  }
+  .side > *:not(.hero-grid) { position: relative; }
+  .side .brand { height: 72px; padding-inline: 22px; font-size: 18px; }
+  .side-new { margin: 6px 16px 18px; }
+  .side-nav { flex: 1; overflow-y: auto; padding: 0 12px 16px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .2) transparent; }
+  .side-label { margin: 18px 12px 8px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: rgba(255, 255, 255, .4); }
+  .side-label:first-child { margin-top: 4px; }
+  .side-link { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; font-size: 14px; font-weight: 500; color: rgba(255, 255, 255, .68); transition: color .2s, background .2s; }
+  .side-link svg { color: rgba(255, 255, 255, .45); transition: color .2s; }
+  .side-link:hover { color: var(--white); background: rgba(255, 255, 255, .06); }
+  .side-link:hover svg { color: var(--white); }
+  .side-link[aria-current] { color: var(--ink); background: var(--lime); font-weight: 600; }
+  .side-link[aria-current] svg { color: var(--ink); }
+  .side-link .count { margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px; background: rgba(255, 255, 255, .1); font-size: 11.5px; font-weight: 600; text-align: center; color: rgba(255, 255, 255, .8); }
+  .side-link[aria-current] .count { background: rgba(11, 15, 11, .14); color: var(--ink); }
+
+  .side-user { display: flex; align-items: center; gap: 12px; margin: 12px; padding: 12px; border-radius: 16px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); }
+  .avatar { display: grid; place-items: center; flex: none; width: 38px; height: 38px; border-radius: 12px; background: var(--lime); color: var(--ink); font-size: 13px; font-weight: 700; }
+  .side-user b { display: block; font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .side-user div span { display: block; font-size: 12px; color: rgba(255, 255, 255, .55); }
+  .side-user button { display: grid; place-items: center; width: 34px; height: 34px; margin-left: auto; border-radius: 10px; color: rgba(255, 255, 255, .6); transition: background .2s, color .2s; }
+  .side-user button:hover { background: rgba(255, 120, 100, .16); color: #ffb4a8; }
+
+  /* ---------- Top bar ---------- */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .top { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px; height: 72px; padding-inline: clamp(16px, 2.4vw, 32px); background: rgba(245, 246, 244, .86); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  .top h1 { font-size: 20px; font-weight: 600; letter-spacing: -.03em; line-height: 1.2; }
+  .top .date { font-size: 12.5px; color: var(--muted); }
+  .top-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .search { position: relative; }
+  .search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .search input { width: 280px; height: 42px; padding: 0 56px 0 40px; border: 1px solid #dfe3dd; border-radius: 999px; background: var(--white); font: inherit; transition: border-color .2s, box-shadow .2s; }
+  .search input:focus { outline: none; border-color: var(--forest-2); box-shadow: 0 0 0 4px rgba(47, 90, 42, .13); }
+  .search kbd { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); padding: 2px 7px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); font: inherit; font-size: 11px; color: var(--muted); }
+  .icon-btn { position: relative; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--white); border: 1px solid #dfe3dd; color: var(--ink-2); transition: background .2s, color .2s, transform .25s var(--ease); }
+  .icon-btn:hover { background: var(--ink); color: var(--lime); border-color: var(--ink); }
+  .icon-btn .dot { position: absolute; right: 9px; top: 9px; width: 9px; height: 9px; border-radius: 50%; background: #e34948; border: 2px solid var(--white); }
+  .site-link { display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px; border-radius: 999px; background: var(--white); border: 1px solid #dfe3dd; font-weight: 500; color: var(--ink-2); transition: background .2s, color .2s; }
+  .site-link:hover { background: var(--ink); color: var(--white); border-color: var(--ink); }
+  .menu-btn { display: none; }
+
+  .bell { position: relative; }
+  .bell-panel { position: absolute; right: 0; top: 52px; width: 340px; padding: 8px; border-radius: 20px; background: var(--white); border: 1px solid var(--line); box-shadow: 0 30px 60px -24px rgba(11, 15, 11, .4); transform-origin: 100% 0; }
+  .bell-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px 12px; }
+  .bell-head b { font-size: 15px; font-weight: 600; }
+  .bell-head button { font-size: 12.5px; font-weight: 500; color: var(--forest-2); }
+
+  /* ---------- Content ---------- */
+  .content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: clamp(16px, 2.4vw, 32px); }
+  .card { background: var(--white); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 1px 2px rgba(11, 15, 11, .03); }
+  .card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 20px 22px 0; }
+  .card-head h2 { font-size: 16px; font-weight: 600; letter-spacing: -.02em; }
+  .card-head p { margin-top: 2px; font-size: 12.5px; color: var(--muted); }
+  .card-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--forest-2); white-space: nowrap; }
+  .card-link svg { transition: transform .3s var(--ease); }
+  .card-link:hover svg { transform: translate(2px, -2px); }
+
+  /* Welcome banner */
+  .banner { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 28px 40px; padding: clamp(22px, 2.6vw, 34px); border-radius: 24px; color: var(--white); background: radial-gradient(80% 110% at 100% 100%, #55724a 0%, #1c2c19 48%, #070907 100%); }
+  .banner > *:not(.hero-grid) { position: relative; }
+  .banner h2 { font-size: clamp(24px, 2.6vw, 34px); font-weight: 500; line-height: 1.12; letter-spacing: -.04em; }
+  .banner p { margin-top: 10px; max-width: 420px; font-size: 14.5px; color: rgba(255, 255, 255, .72); }
+  .banner-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .live { padding: 18px; border-radius: 20px; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .13); backdrop-filter: blur(14px); }
+  .live small { display: block; font-size: 11.5px; color: rgba(255, 255, 255, .6); }
+  .live b { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .live-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .live-status { display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px; border-radius: 999px; background: rgba(211, 246, 91, .14); color: var(--lime); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .live-bar { position: relative; height: 4px; margin: 24px 8px 10px; border-radius: 2px; background: rgba(255, 255, 255, .16); }
+  .live-fill { position: absolute; inset: 0 auto 0 0; width: 72%; border-radius: 2px; background: var(--lime); }
+  .live-fill i { position: absolute; right: -12px; top: 50%; display: grid; place-items: center; width: 24px; height: 24px; margin-top: -12px; border-radius: 50%; background: var(--lime); color: var(--ink); box-shadow: 0 0 0 5px rgba(211, 246, 91, .2); }
+  .live-ends { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: rgba(255, 255, 255, .6); }
+  .live-ends span:last-child { text-align: right; }
+
+  /* KPI tiles */
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .kpi { position: relative; padding: 20px 22px; transition: transform .35s var(--ease), box-shadow .35s var(--ease); }
+  .kpi:hover { transform: translateY(-4px); box-shadow: 0 20px 36px -22px rgba(11, 15, 11, .35); }
+  .kpi-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; color: var(--muted); }
+  .kpi-top i { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--card); color: var(--forest-2); }
+  .kpi.lead { background: var(--ink); border-color: var(--ink); color: var(--white); }
+  .kpi.lead .kpi-top { color: rgba(255, 255, 255, .65); }
+  .kpi.lead .kpi-top i { background: var(--lime); color: var(--ink); }
+  .kpi-value { margin-top: 10px; font-size: 38px; font-weight: 600; line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .kpi-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+  .kpi.lead .kpi-foot { color: rgba(255, 255, 255, .6); }
+  .meter { flex: 1; height: 5px; border-radius: 3px; background: #e9ece7; overflow: hidden; }
+  .meter i { display: block; width: var(--w); height: 100%; border-radius: 3px; background: var(--c, var(--forest-2)); }
+
+  /* Charts */
+  .charts { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+  .plot { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); height: 268px; margin: 20px 22px 22px; }
+  .y-axis { position: relative; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .y-axis span { position: absolute; right: 8px; transform: translateY(50%); }
+  .bars-area { position: relative; display: flex; align-items: stretch; gap: clamp(8px, 2vw, 26px); padding-inline: 10px; margin-bottom: 34px; border-bottom: 1px solid #d5dad3; }
+  .grid-line { position: absolute; left: 0; right: 0; height: 1px; background: #eef0ed; }
+  .bar-col { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; outline-offset: 4px; }
+  .bar-col .val { margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .bar-col .bar { width: 100%; max-width: 54px; height: var(--h); min-height: 3px; border-radius: 4px 4px 0 0; background: var(--c); transform-origin: 50% 100%; transition: filter .2s; }
+  .bar-col:hover .bar, .bar-col:focus-visible .bar { filter: brightness(1.12); }
+  .bar-col .lbl { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 9px; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .tip { position: absolute; left: 50%; bottom: calc(var(--h) + 34px); z-index: 5; transform: translate(-50%, 6px); padding: 8px 12px; border-radius: 10px; background: var(--ink); color: var(--white); font-size: 12px; line-height: 1.4; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s, transform .25s var(--ease); }
+  .tip b { display: block; font-weight: 600; }
+  .tip span { color: rgba(255, 255, 255, .7); }
+  .bar-col:hover .tip, .bar-col:focus-visible .tip { opacity: 1; transform: translate(-50%, 0); }
+
+  .share { padding: 20px 22px 22px; }
+  .share-bar { display: flex; gap: 2px; height: 14px; border-radius: 4px; overflow: hidden; }
+  .share-bar i { width: var(--w); min-width: 3px; background: var(--c); transform-origin: 0 50%; }
+  .share-list { margin: 18px 0 0; padding: 0; list-style: none; }
+  .share-list li { display: grid; grid-template-columns: 10px 1fr auto 52px; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  .share-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+  .share-list i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+  .share-list b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .share-list span:last-child { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* Table + activity */
+  .lower { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .table-wrap { margin-top: 14px; overflow-x: auto; }
+  table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 13.5px; }
+  th { padding: 10px 18px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; text-align: left; color: var(--muted); background: #fafbf9; border-block: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 14px 18px; white-space: nowrap; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr { transition: background .2s; }
+  tbody tr:hover { background: #fafbf9; }
+  .tid b { display: block; font-weight: 600; color: var(--forest-2); font-variant-numeric: tabular-nums; }
+  .tid span { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { padding-left: 22px; }
+  th:last-child, td:last-child { padding-right: 22px; }
+  .route { display: grid; gap: 2px; font-size: 12.5px; color: var(--muted); }
+  .route b { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .status { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px 5px 9px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); font-size: 12.5px; font-weight: 500; color: var(--ink); white-space: nowrap; }
+  .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+  .blocked { display: inline-flex; align-items: center; gap: 5px; margin-left: 6px; padding: 4px 8px; border-radius: 8px; background: #fdf1ef; border: 1px solid #f3cdc7; font-size: 11px; font-weight: 600; color: #8e2a1f; }
+
+  .feed { margin: 0; padding: 8px; list-style: none; }
+  .feed li { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 14px; transition: background .2s; }
+  .feed li:hover { background: var(--card); }
+  .feed i { display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 12px; background: var(--card); color: var(--forest-2); }
+  .feed li.new i { background: var(--ink); color: var(--lime); }
+  .feed b { display: block; font-size: 13.5px; font-weight: 600; }
+  .feed p { font-size: 12.5px; color: var(--muted); }
+  .feed time { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; padding-top: 2px; }
+  .live-tag { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px; border-radius: 999px; background: var(--forest); color: var(--white); font-size: 12px; font-weight: 500; }
+
+  /* Design-preview role switcher (not part of the product) */
+  .preview { position: fixed; left: calc(var(--side-w) + 20px); bottom: 20px; z-index: 50; display: flex; align-items: center; gap: 4px; padding: 5px; border-radius: 999px; background: rgba(11, 15, 11, .88); backdrop-filter: blur(10px); font-size: 12px; color: rgba(255, 255, 255, .6); box-shadow: 0 16px 30px -14px rgba(11, 15, 11, .6); }
+  .preview > span { padding: 0 8px 0 10px; }
+  .preview button { padding: 6px 12px; border-radius: 999px; color: rgba(255, 255, 255, .75); font-size: 12px; font-weight: 500; }
+  .preview button:hover { color: var(--white); }
+  .preview button[aria-pressed="true"] { background: var(--lime); color: var(--ink); }
+
+  .scrim { position: fixed; inset: 0; z-index: 35; background: rgba(11, 15, 11, .5); backdrop-filter: blur(2px); }
+
+  @media (max-width: 1180px) {
+    .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .charts, .lower { grid-template-columns: 1fr; }
+    .search input { width: 200px; }
+  }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .side { position: fixed; left: 0; top: 0; width: min(var(--side-w), 86vw); transform: translateX(-102%); transition: transform .4s var(--ease); }
+    .side.open { transform: none; }
+    .menu-btn { display: grid; }
+    .search, .site-link span { display: none; }
+    .site-link { width: 42px; padding: 0; justify-content: center; }
+    .banner { grid-template-columns: 1fr; }
+    .preview { left: 12px; bottom: 16px; }
+    .preview > span { display: none; }
+  }
+  @media (max-width: 560px) {
+    .kpis { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .kpi { padding: 16px; }
+    .kpi-value { font-size: 30px; }
+    .kpi-top i { width: 32px; height: 32px; }
+    .top .date { display: none; }
+    .bar-col .lbl { font-size: 10px; white-space: normal; text-align: center; width: 60px; line-height: 1.2; }
+    .bars-area { margin-bottom: 44px; padding-inline: 2px; }
+    .bell-panel { position: fixed; left: 12px; right: 12px; top: 76px; width: auto; }
+  }
+</style>
+</head>
+
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="9" rx="2"/><rect x="13.5" y="3.5" width="7" height="5" rx="2"/><rect x="13.5" y="11.5" width="7" height="9" rx="2"/><rect x="3.5" y="15.5" width="7" height="5" rx="2"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6h11v10H2zM13 9h4l4 4v3h-8z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19.500c.6-3 3.200-4.500 6.500-4.500s5.900 1.500 6.500 4.500M16 4.800a3.500 3.500 0 0 1 0 6.400M18.500 15.300c1.600.6 2.700 1.900 3 4.200"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5.5c0 4.300 2.900 7.800 7 9.500 4.100-1.700 7-5.200 7-9.500V6l-7-3Z"/><path d="m9 12 2.200 2.200L15 10.400"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="4"/><path d="M12 8V4M9 14h.01M15 14h.01M2 13v3M22 13v3"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.500c.8-3.600 3.800-5.500 7.500-5.500s6.700 1.900 7.500 5.500"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M15 8l4 4-4 4M19 12H9"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.500 4.500"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.500 2h-15L6 16ZM10 20.500a2.200 2.200 0 0 0 4 0"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="8.500"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="side on-dark" id="side">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <a class="brand" href="dashboard.html"><svg width="24" height="24"><use href="#i-box"/></svg>Parcel Payout</a>
+    <a class="btn block side-new" href="#" data-roles="SENDER ADMIN" style="width:auto"><svg width="16" height="16"><use href="#i-plus"/></svg>New shipment</a>
+
+    <nav class="side-nav" aria-label="Dashboard">
+      <div class="side-label">Main</div>
+      <a class="side-link" href="dashboard.html" aria-current="page"><svg width="19" height="19"><use href="#i-grid"/></svg>Overview</a>
+      <a class="side-link" href="#" data-roles="SENDER ADMIN"><svg width="19" height="19"><use href="#i-box"/></svg>Shipments<span class="count">37</span></a>
+      <a class="side-link" href="#" data-roles="DELIVERY_PERSONNEL"><svg width="19" height="19"><use href="#i-truck"/></svg>My deliveries<span class="count">5</span></a>
+
+      <div class="side-label" data-roles="ADMIN">Management</div>
+      <a class="side-link" href="#" data-roles="ADMIN"><svg width="19" height="19"><use href="#i-users"/></svg>Customers</a>
+      <a class="side-link" href="#" data-roles="ADMIN"><svg width="19" height="19"><use href="#i-truck"/></svg>Couriers<span class="count">2</span></a>
+      <a class="side-link" href="#" data-roles="ADMIN"><svg width="19" height="19"><use href="#i-chart"/></svg>Analytics</a>
+      <a class="side-link" href="#" data-roles="ADMIN"><svg width="19" height="19"><use href="#i-shield"/></svg>Audit logs</a>
+      <a class="side-link" href="#" data-roles="ADMIN"><svg width="19" height="19"><use href="#i-bot"/></svg>AI knowledge</a>
+
+      <div class="side-label">Account</div>
+      <a class="side-link" href="#"><svg width="19" height="19"><use href="#i-user"/></svg>Profile</a>
+    </nav>
+
+    <div class="side-user">
+      <span class="avatar" data-initials>ZM</span>
+      <div style="min-width:0"><b data-name>Zain Malik</b><span data-role-label>Sender</span></div>
+      <button type="button" aria-label="Sign out" title="Sign out"><svg width="17" height="17"><use href="#i-logout"/></svg></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <!-- ================= TOP BAR ================= -->
+    <header class="top">
+      <button class="icon-btn menu-btn" type="button" aria-label="Open menu" aria-controls="side" aria-expanded="false"><svg width="19" height="19"><use href="#i-menu"/></svg></button>
+      <div>
+        <h1>Overview</h1>
+        <div class="date" data-today>Friday, October 9, 2026</div>
+      </div>
+      <div class="top-actions">
+        <label class="search">
+          <svg width="17" height="17"><use href="#i-search"/></svg>
+          <input type="search" placeholder="Search parcels, people..." aria-label="Search">
+          <kbd>Ctrl K</kbd>
+        </label>
+        <div class="bell">
+          <button class="icon-btn" type="button" aria-label="Notifications, 2 unread" aria-expanded="false" aria-controls="bell-panel" data-bell>
+            <svg width="19" height="19"><use href="#i-bell"/></svg><span class="dot"></span>
+          </button>
+          <div class="bell-panel" id="bell-panel" hidden>
+            <div class="bell-head"><b>Notifications</b><button type="button">Mark all read</button></div>
+            <ul class="feed" style="padding:0">
+              <li class="new"><i><svg width="17" height="17"><use href="#i-truck"/></svg></i><div><b>Out for delivery</b><p>TRK-5789-2847 is on its way to Sanzida A.</p></div><time>2m</time></li>
+              <li class="new"><i><svg width="17" height="17"><use href="#i-check"/></svg></i><div><b>Delivered</b><p>TRK-4410-9082 was signed for.</p></div><time>1h</time></li>
+              <li><i><svg width="17" height="17"><use href="#i-box"/></svg></i><div><b>Picked up</b><p>TRK-7733-1054 was collected.</p></div><time>3h</time></li>
+            </ul>
+          </div>
+        </div>
+        <a class="site-link" href="landing.html"><svg width="16" height="16"><use href="#i-back"/></svg><span>Site</span></a>
+      </div>
+    </header>
+
+    <!-- ================= CONTENT (sample data for the design) ================= -->
+    <main class="content">
+      <section class="banner on-dark" data-reveal>
+        <div class="hero-grid" aria-hidden="true"></div>
+        <div>
+          <h2>Welcome back, <span data-first-name>Zain</span></h2>
+          <p data-banner-copy>2 parcels are out for delivery right now, and 4 are waiting for pickup.</p>
+          <div class="banner-actions">
+            <a class="btn" href="#" data-roles="SENDER ADMIN"><svg width="16" height="16"><use href="#i-plus"/></svg>New shipment</a>
+            <a class="btn" href="#" data-roles="DELIVERY_PERSONNEL"><svg width="16" height="16"><use href="#i-truck"/></svg>Open my deliveries</a>
+            <a class="btn ghost" href="track.html">Track a parcel</a>
+          </div>
+        </div>
+        <div class="live" aria-label="Most recent active parcel">
+          <div class="live-head">
+            <div><small>Active parcel</small><b>TRK-5789-2847</b></div>
+            <span class="live-status"><span class="pulse"></span>Out for delivery</span>
+          </div>
+          <div class="live-bar"><div class="live-fill"><i><svg width="12" height="12"><use href="#i-truck"/></svg></i></div></div>
+          <div class="live-ends"><span>12 Lake Road, Block C</span><span>48 Garden Street, Apt 5</span></div>
+        </div>
+      </section>
+
+      <!-- KPI tiles: sender / courier set -->
+      <section class="kpis" data-stagger data-roles="SENDER DELIVERY_PERSONNEL" aria-label="Key figures">
+        <article class="card kpi lead">
+          <div class="kpi-top">Total parcels<i><svg width="18" height="18"><use href="#i-box"/></svg></i></div>
+          <div class="kpi-value" data-count="37">37</div>
+          <div class="kpi-foot">Across all statuses</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-top">In transit<i><svg width="18" height="18"><use href="#i-truck"/></svg></i></div>
+          <div class="kpi-value" data-count="6">6</div>
+          <div class="kpi-foot"><span class="meter"><i style="--w:16.2%;--c:var(--st-transit)"></i></span>16% of parcels</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-top">Delivered<i><svg width="18" height="18"><use href="#i-check"/></svg></i></div>
+          <div class="kpi-value" data-count="21">21</div>
+          <div class="kpi-foot"><span class="meter"><i style="--w:56.8%;--c:var(--st-delivered)"></i></span>57% of parcels</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-top">Pending<i><svg width="18" height="18"><use href="#i-clock"/></svg></i></div>
+          <div class="kpi-value" data-count="4">4</div>
+          <div class="kpi-foot"><span class="meter"><i style="--w:10.8%;--c:var(--st-pending)"></i></span>11% of parcels</div>
+        </article>
+      </section>
+
+      <!-- KPI tiles: admin set -->
+      <section class="kpis" data-stagger data-roles="ADMIN" aria-label="Key figures" hidden>
+        <article class="card kpi lead">
+          <div class="kpi-top">Total parcels<i><svg width="18" height="18"><use href="#i-box"/></svg></i></div>
+          <div class="kpi-value" data-count="37">37</div>
+          <div class="kpi-foot">1 blocked</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-top">Total users<i><svg width="18" height="18"><use href="#i-users"/></svg></i></div>
+          <div class="kpi-value" data-count="128">128</div>
+          <div class="kpi-foot">All roles</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-top">Active users<i><svg width="18" height="18"><use href="#i-check"/></svg></i></div>
+          <div class="kpi-value" data-count="119">119</div>
+          <div class="kpi-foot"><span class="meter"><i style="--w:93%"></i></span>93% of users</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-top">Blocked users<i><svg width="18" height="18"><use href="#i-ban"/></svg></i></div>
+          <div class="kpi-value" data-count="3">3</div>
+          <div class="kpi-foot"><span class="meter"><i style="--w:2.3%;--c:#c0392b"></i></span>2% of users</div>
+        </article>
+      </section>
+
+      <section class="charts">
+        <article class="card" data-reveal>
+          <div class="card-head"><div><h2>Parcels by status</h2><p>Number of parcels currently in each status</p></div></div>
+          <div class="plot" role="img" aria-label="Bar chart of parcels by status: Pending 4, Picked up 3, In transit 6, Out for delivery 2, Delivered 21, Cancelled 1.">
+            <div class="y-axis" aria-hidden="true">
+              <span style="bottom:34px">0</span><span style="bottom:calc(34px + (100% - 34px) * .3)">7</span><span style="bottom:calc(34px + (100% - 34px) * .6)">14</span><span style="bottom:calc(34px + (100% - 34px) * .9)">21</span>
+            </div>
+            <div class="bars-area">
+              <span class="grid-line" style="bottom:30%"></span><span class="grid-line" style="bottom:60%"></span><span class="grid-line" style="bottom:90%"></span>
+              <div class="bar-col" tabindex="0" style="--h:17.1%;--c:var(--st-pending)"><span class="tip"><b>Pending</b><span>4 parcels · 10.8%</span></span><span class="val">4</span><span class="bar"></span><span class="lbl">Pending</span></div>
+              <div class="bar-col" tabindex="0" style="--h:12.9%;--c:var(--st-picked)"><span class="tip"><b>Picked up</b><span>3 parcels · 8.1%</span></span><span class="val">3</span><span class="bar"></span><span class="lbl">Picked up</span></div>
+              <div class="bar-col" tabindex="0" style="--h:25.7%;--c:var(--st-transit)"><span class="tip"><b>In transit</b><span>6 parcels · 16.2%</span></span><span class="val">6</span><span class="bar"></span><span class="lbl">In transit</span></div>
+              <div class="bar-col" tabindex="0" style="--h:8.6%;--c:var(--st-out)"><span class="tip"><b>Out for delivery</b><span>2 parcels · 5.4%</span></span><span class="val">2</span><span class="bar"></span><span class="lbl">Out for delivery</span></div>
+              <div class="bar-col" tabindex="0" style="--h:90%;--c:var(--st-delivered)"><span class="tip"><b>Delivered</b><span>21 parcels · 56.8%</span></span><span class="val">21</span><span class="bar"></span><span class="lbl">Delivered</span></div>
+              <div class="bar-col" tabindex="0" style="--h:4.3%;--c:var(--st-cancelled)"><span class="tip"><b>Cancelled</b><span>1 parcel · 2.7%</span></span><span class="val">1</span><span class="bar"></span><span class="lbl">Cancelled</span></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card" data-reveal>
+          <div class="card-head"><div><h2>Breakdown</h2><p>Share of all 37 parcels</p></div></div>
+          <div class="share">
+            <div class="share-bar" aria-hidden="true">
+              <i style="--w:10.8%;--c:var(--st-pending)"></i><i style="--w:8.1%;--c:var(--st-picked)"></i><i style="--w:16.2%;--c:var(--st-transit)"></i><i style="--w:5.4%;--c:var(--st-out)"></i><i style="--w:56.8%;--c:var(--st-delivered)"></i><i style="--w:2.7%;--c:var(--st-cancelled)"></i>
+            </div>
+            <ul class="share-list">
+              <li><i style="--c:var(--st-pending)"></i>Pending<b>4</b><span>10.8%</span></li>
+              <li><i style="--c:var(--st-picked)"></i>Picked up<b>3</b><span>8.1%</span></li>
+              <li><i style="--c:var(--st-transit)"></i>In transit<b>6</b><span>16.2%</span></li>
+              <li><i style="--c:var(--st-out)"></i>Out for delivery<b>2</b><span>5.4%</span></li>
+              <li><i style="--c:var(--st-delivered)"></i>Delivered<b>21</b><span>56.8%</span></li>
+              <li><i style="--c:var(--st-cancelled)"></i>Cancelled<b>1</b><span>2.7%</span></li>
+            </ul>
+          </div>
+        </article>
+      </section>
+
+      <section class="lower">
+        <article class="card" data-reveal>
+          <div class="card-head">
+            <div><h2>Recent shipments</h2><p>Latest 6, most recently updated first</p></div>
+            <a class="card-link" href="#">View all <svg width="15" height="15"><use href="#i-arrow"/></svg></a>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Tracking ID · updated</th><th>Recipient</th><th>Route</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td class="tid"><b>TRK-5789-2847</b><span>Today, 2:05 PM</span></td><td>Sanzida A.</td><td><div class="route"><b>12 Lake Road, Block C</b>to 48 Garden Street, Apt 5</div></td><td><span class="status"><i style="--c:var(--st-out)"></i>Out for delivery</span></td></tr>
+                <tr><td class="tid"><b>TRK-7733-1054</b><span>Today, 11:40 AM</span></td><td>Khalid Amir</td><td><div class="route"><b>12 Lake Road, Block C</b>to 9 Mill Lane</div></td><td><span class="status"><i style="--c:var(--st-transit)"></i>In transit</span></td></tr>
+                <tr><td class="tid"><b>TRK-4410-9082</b><span>Today, 10:18 AM</span></td><td>Nadia Sultana</td><td><div class="route"><b>12 Lake Road, Block C</b>to 221 Park Avenue</div></td><td><span class="status"><i style="--c:var(--st-delivered)"></i>Delivered</span></td></tr>
+                <tr><td class="tid"><b>TRK-2086-5571</b><span>Today, 9:12 AM</span></td><td>Tariq Zahir</td><td><div class="route"><b>3 Harbor Street</b>to 77 Station Road</div></td><td><span class="status"><i style="--c:var(--st-picked)"></i>Picked up</span></td></tr>
+                <tr><td class="tid"><b>TRK-9912-3360</b><span>Yesterday, 6:48 PM</span></td><td>Faris Nabil</td><td><div class="route"><b>12 Lake Road, Block C</b>to 5 Orchard Close</div></td><td><span class="status"><i style="--c:var(--st-pending)"></i>Pending</span><span class="blocked"><svg width="11" height="11"><use href="#i-ban"/></svg>Blocked</span></td></tr>
+                <tr><td class="tid"><b>TRK-1147-8026</b><span>Oct 7, 4:30 PM</span></td><td>Sara Rahman</td><td><div class="route"><b>3 Harbor Street</b>to 60 Cedar Court</div></td><td><span class="status"><i style="--c:var(--st-cancelled)"></i>Cancelled</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="card" data-reveal>
+          <div class="card-head"><div><h2>Activity</h2><p>Updates as they happen</p></div><span class="live-tag"><span class="pulse"></span>Live</span></div>
+          <ul class="feed" id="feed" style="margin-top:8px">
+            <li class="new"><i><svg width="17" height="17"><use href="#i-truck"/></svg></i><div><b>Out for delivery</b><p>TRK-5789-2847 · assigned to Rami</p></div><time>2m</time></li>
+            <li><i><svg width="17" height="17"><use href="#i-box"/></svg></i><div><b>In transit</b><p>TRK-7733-1054 · left the sorting hub</p></div><time>2h</time></li>
+            <li><i><svg width="17" height="17"><use href="#i-check"/></svg></i><div><b>Delivered</b><p>TRK-4410-9082 · signed by receiver</p></div><time>4h</time></li>
+            <li><i><svg width="17" height="17"><use href="#i-box"/></svg></i><div><b>Picked up</b><p>TRK-2086-5571 · collected from sender</p></div><time>5h</time></li>
+            <li><i><svg width="17" height="17"><use href="#i-clock"/></svg></i><div><b>Booking confirmed</b><p>TRK-9912-3360 · waiting for pickup</p></div><time>1d</time></li>
+          </ul>
+        </article>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="scrim" hidden></div>
+
+<!-- Design-preview only: see the dashboard as each role -->
+<div class="preview" role="group" aria-label="Preview role">
+  <span>Preview as</span>
+  <button type="button" data-role="SENDER" aria-pressed="true">Sender</button>
+  <button type="button" data-role="DELIVERY_PERSONNEL" aria-pressed="false">Courier</button>
+  <button type="button" data-role="ADMIN" aria-pressed="false">Admin</button>
+</div>
+
+<script src="site.js"></script>
+<script>
+/* Design preview: all figures are sample data. The app fills this layout from the API. */
+(() => {
+  const { motionOn, $, $$, EASE, SPRING, VIEW } = PP;
+  const animate = motionOn ? Motion.animate : null;
+
+  /* ---------- Role preview ---------- */
+  const PEOPLE = {
+    SENDER: { name: 'Zain Malik', label: 'Sender', copy: '2 parcels are out for delivery right now, and 4 are waiting for pickup.' },
+    DELIVERY_PERSONNEL: { name: 'Rami Kadir', label: 'Delivery personnel', copy: 'You have 5 deliveries assigned, and 2 are out with you right now.' },
+    ADMIN: { name: 'Nadia Sultana', label: 'Admin', copy: '2 courier applications are waiting for review, and 1 parcel is blocked.' },
+  };
+  const setRole = (role) => {
+    $$('[data-roles]').forEach((el) => { el.hidden = !el.dataset.roles.split(' ').includes(role); });
+    const person = PEOPLE[role];
+    $('[data-name]').textContent = person.name;
+    $('[data-role-label]').textContent = person.label;
+    $('[data-first-name]').textContent = person.name.split(' ')[0];
+    $('[data-initials]').textContent = person.name.split(' ').map((p) => p[0]).join('');
+    $('[data-banner-copy]').textContent = person.copy;
+    $$('[data-role]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.role === role)));
+    if (animate) animate($$(`.kpis[data-roles~="${role}"] > *, .side-link:not([hidden])`), { opacity: [0, 1], y: [10, 0] }, { duration: 0.45, ease: EASE, delay: Motion.stagger(0.03) });
+  };
+  $$('[data-role]').forEach((b) => b.addEventListener('click', () => setRole(b.dataset.role)));
+  setRole('SENDER');
+
+  /* ---------- Notifications dropdown ---------- */
+  const bell = $('[data-bell]');
+  const panel = $('#bell-panel');
+  const setBell = (open) => {
+    bell.setAttribute('aria-expanded', String(open));
+    panel.hidden = !open;
+    if (open && animate) animate(panel, { opacity: [0, 1], scale: [0.94, 1], y: [-8, 0] }, { type: 'spring', stiffness: 360, damping: 28 });
+  };
+  bell.addEventListener('click', (e) => { e.stopPropagation(); setBell(panel.hidden); });
+  document.addEventListener('click', (e) => { if (!panel.hidden && !panel.contains(e.target)) setBell(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { setBell(false); setMenu(false); } });
+
+  /* ---------- Mobile sidebar ---------- */
+  const side = $('#side');
+  const menuBtn = $('.menu-btn');
+  const scrim = $('.scrim');
+  function setMenu(open) {
+    side.classList.toggle('open', open);
+    scrim.hidden = !open;
+    menuBtn.setAttribute('aria-expanded', String(open));
+  }
+  menuBtn.addEventListener('click', () => setMenu(!side.classList.contains('open')));
+  scrim.addEventListener('click', () => setMenu(false));
+
+  $('[data-today]').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  if (!animate) return;
+  const { inView, stagger } = Motion;
+
+  /* ---------- Entrance + chart animations ---------- */
+  animate('.side-link, .side-label', { opacity: [0, 1], x: [-14, 0] }, { duration: 0.5, ease: EASE, delay: stagger(0.035, { startDelay: 0.1 }) });
+  animate('.top > *', { opacity: [0, 1], y: [-10, 0] }, { duration: 0.6, ease: EASE, delay: stagger(0.06) });
+
+  // Active parcel: the truck drives the route on a loop
+  animate('.live-fill', { width: ['6%', '72%', '72%', '100%', '100%'] },
+    { duration: 8, times: [0, 0.4, 0.6, 0.92, 1], ease: 'easeInOut', repeat: Infinity, repeatDelay: 0.8 });
+
+  const bars = $$('.bar-col .bar');
+  bars.forEach((b) => { b.style.transform = 'scaleY(0)'; });
+  inView($('.plot'), () => {
+    animate(bars, { scaleY: [0, 1] }, { type: 'spring', stiffness: 150, damping: 20, delay: stagger(0.08, { startDelay: 0.2 }) });
+    animate('.bar-col .val', { opacity: [0, 1], y: [8, 0] }, { duration: 0.5, delay: stagger(0.08, { startDelay: 0.5 }) });
+  }, VIEW);
+
+  const segments = $$('.share-bar i');
+  segments.forEach((s) => { s.style.transform = 'scaleX(0)'; });
+  inView($('.share'), () => {
+    animate(segments, { scaleX: [0, 1] }, { duration: 0.7, ease: EASE, delay: stagger(0.08, { startDelay: 0.2 }) });
+    animate('.share-list li', { opacity: [0, 1], x: [12, 0] }, { duration: 0.5, ease: EASE, delay: stagger(0.06, { startDelay: 0.3 }) });
+  }, VIEW);
+
+  $$('.meter i').forEach((m) => {
+    inView(m, () => { animate(m, { width: ['0%', getComputedStyle(m).getPropertyValue('--w')] }, { duration: 1, ease: EASE, delay: 0.4 }); });
+  });
+
+  inView($('tbody'), () => {
+    animate('tbody tr', { opacity: [0, 1], y: [10, 0] }, { duration: 0.5, ease: EASE, delay: stagger(0.06, { startDelay: 0.2 }) });
+  }, VIEW);
+
+  // A new update slides into the activity feed, the way live notifications arrive
+  setTimeout(() => {
+    const feed = $('#feed');
+    const item = document.createElement('li');
+    item.className = 'new';
+    item.innerHTML = '<i><svg width="17" height="17"><use href="#i-check"/></svg></i><div><b>Delivered</b><p>TRK-5789-2847 · signed by Sanzida A.</p></div><time>now</time>';
+    feed.querySelector('.new')?.classList.remove('new');
+    feed.prepend(item);
+    feed.lastElementChild.remove();
+    animate(item, { opacity: [0, 1], height: [0, item.offsetHeight], scale: [0.96, 1] }, { type: 'spring', stiffness: 260, damping: 26 })
+      .then(() => { item.style.height = ''; });
+  }, 6000);
+})();
+</script>
+</body>
+</html>
