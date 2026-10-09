@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { getAccessToken, onAuthChange } from '@/lib/auth-storage';
 import { Icon } from '@/components/icon-sprite';
@@ -14,9 +14,23 @@ const LINKS = [
   { href: '/#contact', label: 'Contact' },
 ];
 
-/** Top navigation for the public pages. Sits on a dark header. */
+/** Past this many pixels the nav switches to its solid "scrolled" look. */
+const SCROLL_THRESHOLD = 24;
+
+function subscribeToScroll(onChange: () => void) {
+  window.addEventListener('scroll', onChange, { passive: true });
+  return () => window.removeEventListener('scroll', onChange);
+}
+
+/** Top navigation for the public pages. Stays fixed to the top while scrolling. */
 export function SiteNav({ current }: { current: 'home' | 'track' }) {
   const [signedIn, setSignedIn] = useState(false);
+  // Only re-renders when the page crosses the threshold, not on every scroll event.
+  const scrolled = useSyncExternalStore(
+    subscribeToScroll,
+    () => window.scrollY > SCROLL_THRESHOLD,
+    () => false,
+  );
 
   useEffect(() => {
     // Read after mount: localStorage does not exist during the server render.
@@ -26,7 +40,7 @@ export function SiteNav({ current }: { current: 'home' | 'track' }) {
   }, []);
 
   return (
-    <nav className="nav wrap" data-in aria-label="Primary">
+    <nav className={`nav wrap${scrolled ? ' scrolled' : ''}`} data-in aria-label="Primary">
       <Link className="brand" href="/">
         <Icon name="i-box" size={24} />
         Parcel Payout

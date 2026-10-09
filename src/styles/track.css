@@ -12,7 +12,7 @@
         linear-gradient(180deg, #070907 0%, #0c110b 45%, #1c2c19 100%);
     }
     .track-hero .aurora { position: absolute; left: 50%; top: 30%; width: 620px; height: 420px; margin-left: -310px; border-radius: 50%; background: radial-gradient(closest-side, rgba(211, 246, 91, .13), transparent); filter: blur(40px); pointer-events: none; }
-    .track-head { position: relative; z-index: 1; max-width: 720px; margin: clamp(44px, 6vw, 76px) auto 0; padding-inline: var(--gutter); text-align: center; }
+    .track-head { position: relative; z-index: 1; max-width: 720px; margin: calc(var(--nav-h) + clamp(44px, 6vw, 76px)) auto 0; padding-inline: var(--gutter); text-align: center; }
     .track-head h1 { font-size: clamp(36px, 4.8vw, 58px); font-weight: 500; line-height: 1.06; letter-spacing: -.045em; }
     .track-head > p { margin: 18px auto 0; max-width: 460px; font-size: 15px; color: rgba(255, 255, 255, .72); }
     .track-form {
