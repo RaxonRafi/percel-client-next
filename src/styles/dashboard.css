@@ -11,6 +11,8 @@
     --side-w: 264px;
   }
 
+@keyframes spin { to { transform: rotate(360deg); } }
+
 @layer components {
   .pg-dash {
     & { min-height: 100vh; background: var(--card); font-size: 14px; }
@@ -73,6 +75,17 @@
     .card-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--forest-2); white-space: nowrap; }
     .card-link svg { transition: transform .3s var(--ease); }
     .card-link:hover svg { transform: translate(2px, -2px); }
+
+    /* Data freshness line above the overview */
+    .sync { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 14px; margin-bottom: -4px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .sync > span { display: inline-flex; align-items: center; gap: 9px; }
+    .sync .pulse { background: var(--forest-2); }
+    .sync .pulse::after { border-color: var(--forest-2); }
+    .sync-error { color: #8e2a1f; }
+    .sync button { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px; border-radius: 999px; background: var(--white); border: 1px solid #dfe3dd; font-size: 12.5px; font-weight: 500; color: var(--ink-2); transition: background .2s, color .2s; }
+    .sync button:hover { background: var(--ink); border-color: var(--ink); color: var(--lime); }
+    .sync button:disabled { opacity: .6; pointer-events: none; }
+    .sync .spin { animation: spin .8s linear infinite; }
 
     /* Welcome banner */
     .banner { position: relative; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 28px 40px; padding: clamp(22px, 2.6vw, 34px); border-radius: 24px; color: var(--white); background: radial-gradient(80% 110% at 100% 100%, #55724a 0%, #1c2c19 48%, #070907 100%); }

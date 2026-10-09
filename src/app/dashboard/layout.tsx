@@ -206,7 +206,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                 role="search"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  if (trackId.trim()) router.push(`/track?id=${encodeURIComponent(trackId.trim())}`);
+                  if (trackId.trim()) router.push(`/track/${encodeURIComponent(trackId.trim())}`);
                 }}
               >
                 <Icon name="i-search" size={17} />

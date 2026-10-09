@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { MotionConfig, motion } from 'motion/react';
-import { api, ApiError } from '@/lib/api';
+import { api } from '@/lib/api';
 import { formatDate, formatStatus } from '@/lib/parcel-utils';
 import { EASE, createMotionScope, motionEnabled, stagger } from '@/lib/motion';
 import type { ParcelStatus, PublicParcel } from '@/lib/types';
+import { useCached } from '@/lib/use-cached';
 import { Icon } from '@/components/icon-sprite';
 import { MotionReveal } from '@/components/motion-reveal';
 import { SiteNav } from '@/components/site-nav';
@@ -232,37 +233,45 @@ function Skeleton() {
   );
 }
 
-export function TrackView() {
+/** Statuses after which a parcel never changes again — no point polling. */
+const TERMINAL: ParcelStatus[] = ['DELIVERED', 'CANCELLED'];
+const REFRESH_MS = 30_000;
+
+const clock = (at: number) =>
+  new Date(at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+
+/**
+ * The tracking screen. On /track it is just the search box; on /track/[id] the
+ * server passes in the parcel it rendered with (cached by ISR), and this keeps
+ * it fresh in the browser while the page stays open.
+ */
+export function TrackView({
+  trackingId,
+  initialParcel = null,
+  notFound = false,
+}: {
+  trackingId?: string;
+  initialParcel?: PublicParcel | null;
+  /** The server looked the ID up and found nothing. */
+  notFound?: boolean;
+}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialId = searchParams.get('id') ?? '';
   const inputRef = useRef<HTMLInputElement>(null);
+  const [value, setValue] = useState(trackingId ?? '');
+  const [navigating, startNavigation] = useTransition();
 
-  const [trackingId, setTrackingId] = useState(initialId);
-  const [searched, setSearched] = useState('');
-  const [parcel, setParcel] = useState<PublicParcel | null>(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const performTrack = useCallback(async (idToTrack: string) => {
-    const id = idToTrack.trim();
-    if (!id) return;
-    setError('');
-    setParcel(null);
-    setSearched(id);
-    setLoading(true);
-    try {
-      setParcel(await api.getParcel(id));
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Parcel not found');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (initialId) performTrack(initialId);
-  }, [initialId, performTrack]);
+  const live = Boolean(trackingId && initialParcel);
+  const { data, updatedAt, refreshing, refresh } = useCached(
+    live ? `track:${trackingId}` : null,
+    () => api.getParcel(trackingId!),
+    {
+      initialData: initialParcel ?? undefined,
+      // Public data rendered on the server: nothing to restore from storage.
+      persist: false,
+      refreshMs: initialParcel && TERMINAL.includes(initialParcel.status) ? 0 : REFRESH_MS,
+    },
+  );
+  const parcel = data ?? initialParcel;
 
   // Header entrance
   useEffect(() => {
@@ -278,11 +287,10 @@ export function TrackView() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const id = trackingId.trim();
+    const id = value.trim();
     if (!id) return;
-    // Keep the ID in the URL so the result can be shared or refreshed.
-    router.replace(`/track?id=${encodeURIComponent(id)}`, { scroll: false });
-    if (id === initialId) performTrack(id);
+    // Each ID has its own cached page; the transition keeps the skeleton up while it loads.
+    startNavigation(() => router.push(`/track/${encodeURIComponent(id)}`));
   }
 
   return (
@@ -302,30 +310,41 @@ export function TrackView() {
               placeholder="Enter tracking ID (e.g. TRK-...)"
               aria-label="Tracking ID"
               autoComplete="off"
-              value={trackingId}
-              onChange={(e) => setTrackingId(e.target.value)}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
               required
             />
-            <button className="btn lg" type="submit" disabled={loading}>
-              {loading ? 'Tracking…' : 'Track'}
+            <button className="btn lg" type="submit" disabled={navigating}>
+              {navigating ? 'Tracking…' : 'Track'}
             </button>
           </form>
         </div>
       </header>
 
       <main className="track-body wrap">
-        {loading ? (
+        {navigating ? (
           <Skeleton />
         ) : parcel ? (
-          <Result parcel={parcel} key={parcel.trackingId} />
-        ) : error ? (
+          <>
+            <Result parcel={parcel} key={parcel.trackingId} />
+            <div className="fresh">
+              <span>
+                <span className="pulse" />
+                {updatedAt ? `Checked ${clock(updatedAt)}` : 'Live'}
+                {TERMINAL.includes(parcel.status) ? '' : ' · updates automatically'}
+              </span>
+              <button type="button" onClick={() => refresh()} disabled={refreshing}>
+                <Icon name="i-repeat" size={14} />{refreshing ? 'Refreshing…' : 'Refresh'}
+              </button>
+            </div>
+          </>
+        ) : notFound ? (
           <motion.section className="t-card t-state missing" role="alert" {...rise} transition={{ duration: 0.6, ease: EASE }}>
             <i><Icon name="i-search" size={34} /></i>
             <h2>Parcel not found</h2>
             <p>
-              We couldn&apos;t find a parcel with the ID <b>{searched}</b>. Check the ID for typos and try again.
+              We couldn&apos;t find a parcel with the ID <b>{trackingId}</b>. Check the ID for typos and try again.
             </p>
-            <p className="sum-meta">{error}</p>
             <div className="actions">
               <button className="btn dark" type="button" onClick={() => { inputRef.current?.focus(); inputRef.current?.select(); }}>
                 Try another ID

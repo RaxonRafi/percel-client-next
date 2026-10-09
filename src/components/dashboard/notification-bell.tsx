@@ -117,7 +117,7 @@ export function NotificationBell() {
               {notifications.map((item) => (
                 <li key={item.id}>
                   <Link
-                    href={`/track?id=${encodeURIComponent(item.trackingId)}`}
+                    href={`/track/${encodeURIComponent(item.trackingId)}`}
                     onClick={toggle}
                     className={`flex gap-3 px-4 py-3 transition-colors hover:bg-surface ${item.read ? '' : 'bg-accent-bg/50'}`}
                   >

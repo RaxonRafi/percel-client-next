@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, type CSSProperties } from 'react';
+import React, { useEffect, useRef, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { animate } from 'motion';
 import { MotionConfig, motion } from 'motion/react';
@@ -8,12 +8,14 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { EASE, motionEnabled } from '@/lib/motion';
 import { useNotifications } from '@/lib/notifications-context';
+import { useCached } from '@/lib/use-cached';
 import {
   PARCEL_STATUSES,
   type DashboardStats,
   type Paginated,
   type Parcel,
   type ParcelStatus,
+  type Role,
 } from '@/lib/types';
 import { formatDate, formatStatus, mergeParcels } from '@/lib/parcel-utils';
 import { Icon } from '@/components/icon-sprite';
@@ -110,6 +112,43 @@ function Kpi({
   );
 }
 
+const REFRESH_MS = 60_000;
+
+type Overview = {
+  stats: DashboardStats | null;
+  parcels: Parcel[];
+  listTotal: number;
+  /** True when a role's list was capped, so the charts cover the latest 100 only. */
+  truncated: boolean;
+};
+
+/** Everything the overview shows, in one cacheable value. What is fetched depends on the role. */
+async function loadOverview(role: Role): Promise<Overview> {
+  const SAMPLE = { limit: 100 };
+  const merge = (...pages: Paginated<Parcel>[]): Overview => ({
+    stats: null,
+    parcels: mergeParcels(...pages.map((p) => p.data)),
+    listTotal: pages.reduce((sum, p) => sum + p.meta.total, 0),
+    truncated: pages.some((p) => p.meta.total > p.data.length),
+  });
+
+  switch (role) {
+    case 'ADMIN': {
+      const [stats, recent] = await Promise.all([api.getDashboard(), api.getAllParcels({ limit: 6 })]);
+      return { stats, parcels: recent.data, listTotal: recent.meta.total, truncated: false };
+    }
+    case 'SENDER':
+      return merge(await api.getMyParcels(SAMPLE));
+    case 'RECEIVER':
+      return merge(...(await Promise.all([api.getIncomingParcels(SAMPLE), api.getDeliveryHistory(SAMPLE)])));
+    case 'DELIVERY_PERSONNEL':
+      return merge(...(await Promise.all([api.getAssignedParcels(SAMPLE), api.getCompletedDeliveries(SAMPLE)])));
+    default:
+      // PENDING_DELIVERY has no parcel routes until an admin approves it.
+      return { stats: null, parcels: [], listTotal: 0, truncated: false };
+  }
+}
+
 const rise = {
   initial: { opacity: 0, y: 22 },
   animate: { opacity: 1, y: 0 },
@@ -118,61 +157,20 @@ const rise = {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { notifications } = useNotifications();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [parcels, setParcels] = useState<Parcel[]>([]);
-  const [listTotal, setListTotal] = useState<number | null>(null);
-  const [truncated, setTruncated] = useState(false);
-  const [error, setError] = useState('');
-
   const role = user?.role;
 
+  // Per-user key: the cached copy paints instantly, then refreshes every minute.
+  const { data, error, refreshing, updatedAt, refresh } = useCached(
+    user && role ? `overview:${user.id}:${role}` : null,
+    () => loadOverview(role!),
+    { refreshMs: REFRESH_MS },
+  );
+
+  // A live notification means something just changed — refetch without waiting.
+  const latestNotification = notifications[0]?.id;
   useEffect(() => {
-    if (!role) return;
-    let cancelled = false;
-    const SAMPLE = { limit: 100 };
-
-    const absorb = (...pages: Paginated<Parcel>[]) => {
-      setParcels(mergeParcels(...pages.map((p) => p.data)));
-      setListTotal(pages.reduce((sum, p) => sum + p.meta.total, 0));
-      setTruncated(pages.some((p) => p.meta.total > p.data.length));
-    };
-
-    (async () => {
-      try {
-        if (role === 'ADMIN') {
-          const [dashboard, recent] = await Promise.all([
-            api.getDashboard(),
-            api.getAllParcels({ limit: 6 }),
-          ]);
-          if (cancelled) return;
-          setStats(dashboard);
-          setParcels(recent.data);
-          setListTotal(recent.meta.total);
-        } else if (role === 'SENDER') {
-          const mine = await api.getMyParcels(SAMPLE);
-          if (!cancelled) absorb(mine);
-        } else if (role === 'RECEIVER') {
-          const [incoming, history] = await Promise.all([
-            api.getIncomingParcels(SAMPLE),
-            api.getDeliveryHistory(SAMPLE),
-          ]);
-          if (!cancelled) absorb(incoming, history);
-        } else if (role === 'DELIVERY_PERSONNEL') {
-          const [queue, done] = await Promise.all([
-            api.getAssignedParcels(SAMPLE),
-            api.getCompletedDeliveries(SAMPLE),
-          ]);
-          if (!cancelled) absorb(queue, done);
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load dashboard');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [role]);
+    if (latestNotification) refresh(true);
+  }, [latestNotification, refresh]);
 
   if (!user) return null;
 
@@ -190,6 +188,10 @@ export default function DashboardPage() {
   }
 
   const isAdmin = role === 'ADMIN';
+  const stats = data?.stats ?? null;
+  const parcels = data?.parcels ?? [];
+  const listTotal = data?.listTotal ?? null;
+  const truncated = data?.truncated ?? false;
   const byStatus: Record<ParcelStatus, number> =
     stats?.parcelsByStatus ??
     (Object.fromEntries(
@@ -223,7 +225,22 @@ export default function DashboardPage() {
 
   return (
     <MotionConfig reducedMotion="user">
-      {error ? <div className="form-error card" style={{ padding: '12px 18px' }} role="alert">{error}</div> : null}
+      <div className="sync">
+        {error ? (
+          <span className="sync-error" role="alert"><Icon name="i-alert" size={14} />{error}</span>
+        ) : (
+          <span>
+            <span className="pulse" />
+            {updatedAt
+              ? `Updated ${new Date(updatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' })} · refreshes every minute`
+              : 'Loading your data…'}
+          </span>
+        )}
+        <button type="button" onClick={() => refresh()} disabled={refreshing}>
+          <Icon name="i-repeat" size={14} className={refreshing ? 'spin' : undefined} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </button>
+      </div>
 
       <motion.section className="banner on-dark" {...rise} transition={{ duration: 0.7, ease: EASE }}>
         <div className="hero-grid" aria-hidden="true" />
@@ -245,7 +262,7 @@ export default function DashboardPage() {
         </div>
 
         {active && (
-          <Link className="live" href={`/track?id=${encodeURIComponent(active.trackingId)}`} aria-label={`Track ${active.trackingId}`}>
+          <Link className="live" href={`/track/${encodeURIComponent(active.trackingId)}`} aria-label={`Track ${active.trackingId}`}>
             <div className="live-head">
               <div><small>Active parcel</small><b>{active.trackingId}</b></div>
               <span className="live-status"><span className="pulse" />{formatStatus(active.status)}</span>
@@ -396,7 +413,7 @@ export default function DashboardPage() {
                 {recent.map((p) => (
                   <tr key={p.id}>
                     <td className="tid">
-                      <Link href={`/track?id=${encodeURIComponent(p.trackingId)}`}><b>{p.trackingId}</b></Link>
+                      <Link href={`/track/${encodeURIComponent(p.trackingId)}`}><b>{p.trackingId}</b></Link>
                       <span>{formatDate(p.updatedAt)}</span>
                     </td>
                     <td>{role === 'RECEIVER' ? p.senderName : p.receiverName}</td>

@@ -1,3 +1,4 @@
+import { clearDataCache } from './data-cache';
 import type { User } from './types';
 
 const ACCESS_KEY = 'sp_access_token';
@@ -21,6 +22,8 @@ function activeStore(): Storage {
 }
 
 function wipe(): void {
+  // Cached API data belongs to the session that fetched it.
+  clearDataCache();
   for (const store of [localStorage, sessionStorage]) {
     store.removeItem(ACCESS_KEY);
     store.removeItem(REFRESH_KEY);
