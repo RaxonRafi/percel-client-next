@@ -57,7 +57,7 @@ function ResetForm() {
   return (
     <>
       <h1 data-in>Set a new password</h1>
-      <p data-in>This link can be used once and expires 30 minutes after it was sent.</p>
+      <p data-in>This link can be used once and stops working after a while. If it has expired, request a new one.</p>
 
       <form onSubmit={handleSubmit}>
         {!fromLink && (

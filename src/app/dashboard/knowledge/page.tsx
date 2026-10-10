@@ -39,6 +39,26 @@ export default function KnowledgePage() {
     }
   }
 
+  // The index routes take the whole parcel, owner ids included: without them a
+  // parcel is only retrievable by admins.
+  async function indexOne(trackingId: string) {
+    const res = await api.getAllParcels({ search: trackingId, limit: 100 });
+    const parcel = res.data.find((p) => p.trackingId.toLowerCase() === trackingId.toLowerCase());
+    if (!parcel) throw new ApiError('No parcel with that tracking ID', 404);
+    return api.indexParcel(parcel);
+  }
+
+  async function indexAll() {
+    let total = 0;
+    for (let page = 1; ; page += 1) {
+      const res = await api.getAllParcels({ page, limit: 100 });
+      if (res.data.length > 0) await api.indexParcels(res.data);
+      total += res.data.length;
+      if (!res.meta.hasNext) break;
+    }
+    return { message: total > 0 ? `${total} parcels re-indexed` : 'No parcels to index' };
+  }
+
   async function uploadPdf(e: React.FormEvent) {
     e.preventDefault();
     const file = fileInput.current?.files?.[0];
@@ -193,20 +213,20 @@ export default function KnowledgePage() {
             
             <div className="p-5 space-y-5">
               <div className="space-y-1.5">
-                <label htmlFor="parcelId" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Target Parcel ID</label>
+                <label htmlFor="parcelId" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Index Parcel (Tracking ID)</label>
                 <div className="flex gap-2">
                   <input
                     id="parcelId"
                     type="text"
                     value={parcelId}
                     onChange={(e) => setParcelId(e.target.value)}
-                    placeholder="UUID"
+                    placeholder="TRK-..."
                     className="flex-1 h-10 px-3 rounded-md border border-surface-3 bg-white text-sm text-ink placeholder:text-ink-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all"
                   />
                   <Button
                     variant="secondary"
                     disabled={busy || !parcelId.trim()}
-                    onClick={() => run(() => api.indexParcel(parcelId.trim()), 'Parcel indexed')}
+                    onClick={() => run(() => indexOne(parcelId.trim()), 'Parcel indexed')}
                   >
                     Index
                   </Button>
@@ -214,7 +234,7 @@ export default function KnowledgePage() {
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="removeId" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Remove Parcel ID</label>
+                <label htmlFor="removeId" className="text-[11px] font-bold uppercase tracking-wider text-ink-3">Remove Parcel (Internal ID)</label>
                 <div className="flex gap-2">
                   <input
                     id="removeId"
@@ -240,7 +260,7 @@ export default function KnowledgePage() {
                   variant="ghost"
                   className="w-full bg-surface-2 text-ink-2 hover:bg-surface-2 border border-surface-3"
                   disabled={busy}
-                  onClick={() => run(() => api.indexAllParcels(), 'Bulk index started')}
+                  onClick={() => run(indexAll, 'Parcels re-indexed')}
                 >
                   <Settings className="h-4 w-4 mr-2 text-ink-2" /> Trigger Full Database Re-Index
                 </Button>

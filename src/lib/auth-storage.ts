@@ -4,6 +4,7 @@ import type { User } from './types';
 const ACCESS_KEY = 'sp_access_token';
 const REFRESH_KEY = 'sp_refresh_token';
 const USER_KEY = 'sp_user';
+const NOTICE_KEY = 'sp_auth_notice';
 
 /** Notifies hooks in the current tab; `storage` only fires in other tabs. */
 const AUTH_EVENT = 'sp-auth-change';
@@ -103,4 +104,16 @@ export function setStoredUser(user: User): void {
 export function clearAuth(): void {
   wipe();
   announce();
+}
+
+/** Why the session was ended server-side, kept for the login screen to show once. */
+export function setAuthNotice(message: string): void {
+  if (typeof window !== 'undefined') sessionStorage.setItem(NOTICE_KEY, message);
+}
+
+export function takeAuthNotice(): string | null {
+  if (typeof window === 'undefined') return null;
+  const message = sessionStorage.getItem(NOTICE_KEY);
+  sessionStorage.removeItem(NOTICE_KEY);
+  return message;
 }

@@ -9,9 +9,9 @@ import {
   useState,
 } from 'react';
 import { io } from 'socket.io-client';
-import { api } from './api';
+import { api, ApiError } from './api';
 import { useAuth } from './auth-context';
-import { getAccessToken } from './auth-storage';
+import { clearAuth, getAccessToken } from './auth-storage';
 import { SOCKET_URL } from './config';
 import type { RealtimeNotification } from './types';
 
@@ -72,7 +72,19 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       refreshed = false;
       setConnected(true);
     });
-    socket.on('disconnect', () => setConnected(false));
+    socket.on('disconnect', (reason) => {
+      setConnected(false);
+      // The server closes the socket when the account is blocked, and
+      // Socket.IO does not reconnect by itself after that. Ask the API: a dead
+      // session signs the user out, a live one is safe to reconnect.
+      if (reason !== 'io server disconnect') return;
+      api
+        .getMe()
+        .then(() => socket.connect())
+        .catch((err) => {
+          if (err instanceof ApiError && err.status === 401) clearAuth();
+        });
+    });
     socket.on('connect_error', (err) => {
       setConnected(false);
       if (err.message !== 'unauthorized' || refreshed) return;

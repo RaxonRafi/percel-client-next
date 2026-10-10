@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
-import { setAuth } from '@/lib/auth-storage';
+import { setAuth, takeAuthNotice } from '@/lib/auth-storage';
 import { AuthShell, PasswordField, SubmitButton, shake } from '@/components/auth/auth-shell';
 import { Icon } from '@/components/icon-sprite';
 
@@ -16,6 +16,13 @@ export default function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Sent here because the server ended the session (blocked, deleted, expired):
+  // say why instead of showing a bare form.
+  useEffect(() => {
+    const notice = takeAuthNotice();
+    if (notice) setError(notice);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -122,12 +122,17 @@ export default function DeliveriesPage() {
                         <p className="font-bold text-accent tracking-wider text-sm">{p.trackingId}</p>
                         <p className="text-[11px] text-ink-3 mt-0.5">UPDATED {formatDate(p.updatedAt).toUpperCase()}</p>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                        ['PENDING', 'ACCEPTED'].includes(p.status) ? 'bg-surface-2 text-ink-2 border-surface-3' :
-                        'bg-accent-bg text-accent border-accent/20'
-                      }`}>
-                        {formatStatus(p.status)}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                          ['PENDING', 'ACCEPTED'].includes(p.status) ? 'bg-surface-2 text-ink-2 border-surface-3' :
+                          'bg-accent-bg text-accent border-accent/20'
+                        }`}>
+                          {formatStatus(p.status)}
+                        </span>
+                        {p.isBlocked && (
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">On hold</span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mb-4 grid gap-4 text-[13px] md:grid-cols-2">
@@ -176,7 +181,7 @@ export default function DeliveriesPage() {
                       <select
                         className="h-9 rounded-md border border-surface-3 bg-white px-3 text-[11px] font-bold tracking-wider uppercase text-ink-2 focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none"
                         value={draft.status}
-                        disabled={isTerminal(p.status)}
+                        disabled={isTerminal(p.status) || p.isBlocked}
                         onChange={(e) =>
                           setDrafts({
                             ...drafts,
@@ -185,6 +190,7 @@ export default function DeliveriesPage() {
                         }
                       >
                         <option value={p.status}>{formatStatus(p.status)}</option>
+                        {/* DELIVERED goes through the proof form, which also records COD cash. */}
                         {allowedTransitions(p.status, 'DELIVERY_PERSONNEL')
                           .filter((s) => s !== 'DELIVERED')
                           .map((s) => (
@@ -202,7 +208,7 @@ export default function DeliveriesPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        disabled={busy || draft.status === p.status}
+                        disabled={busy || p.isBlocked || draft.status === p.status}
                         onClick={() => updateStatus(p)}
                       >
                         Update Status
@@ -210,7 +216,7 @@ export default function DeliveriesPage() {
                       {allowedTransitions(p.status, 'DELIVERY_PERSONNEL').includes('DELIVERED') && (
                         <Button
                           size="sm"
-                          disabled={busy}
+                          disabled={busy || p.isBlocked}
                           onClick={() => setProofFor(proofFor?.id === p.id ? null : p)}
                         >
                           Complete Delivery
@@ -218,7 +224,13 @@ export default function DeliveriesPage() {
                       )}
                     </div>
 
-                    {proofFor?.id === p.id && (
+                    {p.isBlocked && (
+                      <p className="mt-3 text-[12px] text-rose-600">
+                        This parcel is on hold. It cannot be updated or delivered until an admin releases it.
+                      </p>
+                    )}
+
+                    {proofFor?.id === p.id && !p.isBlocked && (
                       <DeliveryProofForm
                         parcel={p}
                         onCancel={() => setProofFor(null)}

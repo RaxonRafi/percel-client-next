@@ -24,14 +24,9 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
     label: 'Main',
     items: [
       { label: 'Overview', href: '/dashboard', icon: 'i-grid' },
-      {
-        label: 'Shipments',
-        href: '/dashboard/parcels',
-        icon: 'i-box',
-        // PENDING_DELIVERY is barred from every role-guarded route until an
-        // admin approves the application.
-        roles: ['ADMIN', 'SENDER', 'RECEIVER'],
-      },
+      // Every role: incoming parcels and delivery history are scoped by who a
+      // parcel is addressed to, so couriers and applicants have them too.
+      { label: 'Shipments', href: '/dashboard/parcels', icon: 'i-box' },
       {
         label: 'My deliveries',
         href: '/dashboard/deliveries',

@@ -68,7 +68,7 @@ export default function AnalyticsPage() {
         <>
           {/* Top KPI Cards */}
           <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            <KpiCard title="Total Revenue" value={formatMoney(trends.revenue.deliveryFeesDelivered)} icon={DollarSign} trend="+12.5%" tone="green" />
+            <KpiCard title={`Revenue · ${trends.rangeDays}d`} value={formatMoney(trends.revenue.deliveryFeesDelivered)} icon={DollarSign} trend="+12.5%" tone="green" />
             <KpiCard title="Active Parcels" value={stats.totalParcels - (stats.parcelsByStatus.DELIVERED ?? 0) - (stats.parcelsByStatus.CANCELLED ?? 0)} icon={Package} tone="orange" />
             <KpiCard title="Avg Delivery Time" value={trends.averageFulfilmentHours ? `${Math.round(trends.averageFulfilmentHours)}h` : 'N/A'} icon={Clock} tone="blue" />
             <KpiCard title="Active Couriers" value={trends.courierThroughput.filter(c => c.active > 0).length} icon={Truck} tone="amber" />
@@ -116,8 +116,10 @@ export default function AnalyticsPage() {
 
             {/* Revenue breakdown */}
             <div className="bg-white border border-surface-3 rounded-xl shadow-sm flex flex-col">
-              <div className="px-5 py-4 border-b border-surface-2">
+              {/* Revenue and courier figures cover the selected window, not all time. */}
+              <div className="px-5 py-4 border-b border-surface-2 flex justify-between items-center">
                 <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-2">Financials</h2>
+                <span className="text-[10px] uppercase tracking-wider text-ink-3">Last {trends.rangeDays} days</span>
               </div>
               <div className="p-5 flex-1 flex flex-col gap-6">
                 <FinancialRow label="Booked Fees" value={trends.revenue.deliveryFeesBooked} />
@@ -132,8 +134,9 @@ export default function AnalyticsPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Courier Performance */}
             <div className="bg-white border border-surface-3 rounded-xl shadow-sm flex flex-col max-h-[400px]">
-              <div className="px-5 py-4 border-b border-surface-2">
+              <div className="px-5 py-4 border-b border-surface-2 flex justify-between items-center">
                 <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-2">Courier Performance</h2>
+                <span className="text-[10px] uppercase tracking-wider text-ink-3">Last {trends.rangeDays} days</span>
               </div>
               <div className="p-0 overflow-y-auto flex-1 custom-scrollbar">
                 <table className="w-full text-[13px] text-left">

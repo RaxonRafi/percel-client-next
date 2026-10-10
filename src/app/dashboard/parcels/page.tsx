@@ -16,12 +16,15 @@ import {
   type User,
 } from '@/lib/types';
 import {
-  allowedTransitions, formatDate, formatMoney, formatStatus, isTerminal,
+  allowedTransitions, formatDate, formatMoney, formatStatus, isTerminal, needsProof,
 } from '@/lib/parcel-utils';
 import { Package, Plus, Search, ChevronRight, ChevronDown, Settings2 } from 'lucide-react';
 
 const modalField =
   'h-10 rounded-lg border border-surface-3 bg-white px-3 text-sm text-ink focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none placeholder:text-ink-3 disabled:bg-surface disabled:text-ink-3';
+
+/** `main` is the role's own list: every parcel for an admin, sent parcels for a sender. */
+type View = 'main' | 'incoming' | 'history';
 
 export default function ParcelsPage() {
   const { user } = useAuth();
@@ -43,9 +46,12 @@ export default function ParcelsPage() {
     search: '',
     status: '',
   });
-  const [tab, setTab] = useState<'incoming' | 'history'>('incoming');
-
   const role = user?.role;
+  const hasMain = role === 'ADMIN' || role === 'SENDER';
+  // Incoming and history are scoped by who the parcel is addressed to, not by
+  // role: a parcel can be booked to a sender's, courier's or admin's email too.
+  const [tab, setTab] = useState<View>(hasMain ? 'main' : 'incoming');
+  const view: View = !hasMain && tab === 'main' ? 'incoming' : tab;
 
   const load = useCallback(async () => {
     if (!role) return;
@@ -57,7 +63,14 @@ export default function ParcelsPage() {
       status: (filters.status || undefined) as ParcelStatus | undefined,
     };
     try {
-      if (role === 'ADMIN') {
+      if (view !== 'main') {
+        const list =
+          view === 'incoming'
+            ? await api.getIncomingParcels(query)
+            : await api.getDeliveryHistory(query);
+        setParcels(list.data);
+        setMeta(list.meta);
+      } else if (role === 'ADMIN') {
         const [all, activeCouriers] = await Promise.all([
           api.getAllParcels(query),
           api.getCouriers({ limit: 100 }),
@@ -65,22 +78,15 @@ export default function ParcelsPage() {
         setParcels(all.data);
         setMeta(all.meta);
         setCouriers(activeCouriers.data);
-      } else if (role === 'SENDER') {
+      } else {
         const mine = await api.getMyParcels(query);
         setParcels(mine.data);
         setMeta(mine.meta);
-      } else {
-        const list =
-          tab === 'incoming'
-            ? await api.getIncomingParcels(query)
-            : await api.getDeliveryHistory(query);
-        setParcels(list.data);
-        setMeta(list.meta);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load parcels');
     }
-  }, [role, page, limit, filters.search, filters.status, tab]);
+  }, [role, page, limit, filters.search, filters.status, view]);
 
   useEffect(() => {
     load();
@@ -128,41 +134,41 @@ export default function ParcelsPage() {
             Parcel Management
           </h1>
           <p className="text-ink-3 text-[13px] mt-1 tracking-wide">
-            {user?.role === 'ADMIN'
-              ? 'SYSTEM FLEET OVERVIEW'
-              : user?.role === 'SENDER'
-                ? 'MY OUTBOUND SHIPMENTS'
-                : tab === 'incoming'
-                  ? 'INCOMING PARCELS'
-                  : 'DELIVERY HISTORY'}
+            {view === 'incoming'
+              ? 'INCOMING PARCELS'
+              : view === 'history'
+                ? 'DELIVERY HISTORY'
+                : user?.role === 'ADMIN'
+                  ? 'SYSTEM FLEET OVERVIEW'
+                  : 'MY OUTBOUND SHIPMENTS'}
           </p>
         </div>
         
-        {canCreate && (
-          <Button asChild>
-            <Link href="/dashboard/parcels/new">
-              <Plus className="h-4 w-4" /> New shipment
-            </Link>
-          </Button>
-        )}
-
-        {user?.role === 'RECEIVER' && (
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex bg-white p-1 rounded-md border border-surface-3">
-            {(['incoming', 'history'] as const).map((t) => (
+            {((hasMain ? ['main', 'incoming', 'history'] : ['incoming', 'history']) as View[]).map((t) => (
               <button
                 key={t}
-                onClick={() => { setTab(t); setPage(1); }}
+                onClick={() => { setTab(t); setPage(1); setExpanded(null); }}
                 className={`px-3 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-md transition-all cursor-pointer ${
-                  tab === t 
-                    ? "bg-accent-bg text-accent border border-accent/20" 
+                  view === t
+                    ? "bg-accent-bg text-accent border border-accent/20"
                     : "text-ink-3 hover:text-ink-2 hover:bg-surface-2 border border-transparent"
                 }`}
               >
-                {t === 'incoming' ? 'Incoming' : 'History'}
+                {t === 'main' ? (role === 'ADMIN' ? 'All' : 'Sent') : t === 'incoming' ? 'Incoming' : 'History'}
               </button>
             ))}
           </div>
-        )}
+
+          {canCreate && (
+            <Button asChild>
+              <Link href="/dashboard/parcels/new">
+                <Plus className="h-4 w-4" /> New shipment
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white border border-surface-3 rounded-xl shadow-sm flex flex-col">
@@ -202,6 +208,8 @@ export default function ParcelsPage() {
                 <tbody className="divide-y divide-surface-3">
                   {parcels.map((p) => {
                     const isOpen = expanded === p.id;
+                    const addressedToMe = p.receiver?.id === user?.id;
+                    const cashDue = needsProof(p);
                     return (
                       <tr key={p.id} className="hover:bg-surface transition-colors group align-top">
                         <td className="px-5 py-4">
@@ -272,7 +280,7 @@ export default function ParcelsPage() {
                                     size="sm"
                                     variant="ghost"
                                     disabled={busy}
-                                    onClick={() => run(() => api.indexParcel(p.id), 'Parcel indexed for AI search')}
+                                    onClick={() => run(() => api.indexParcel(p), 'Parcel indexed for AI search')}
                                   >
                                     Index for AI search
                                   </Button>
@@ -280,7 +288,7 @@ export default function ParcelsPage() {
                                     <Button
                                       size="sm"
                                       variant="secondary"
-                                      disabled={busy}
+                                      disabled={busy || p.isBlocked}
                                       onClick={() => setProofFor(proofFor?.id === p.id ? null : p)}
                                     >
                                       Record delivery proof
@@ -326,7 +334,7 @@ export default function ParcelsPage() {
                               {formatStatus(p.status)}
                             </span>
                             {p.isBlocked && (
-                              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">Blocked</span>
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">On hold</span>
                             )}
                           </div>
                         </td>
@@ -343,7 +351,8 @@ export default function ParcelsPage() {
                         
                         <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex flex-col items-end gap-2">
-                            {user?.role === 'SENDER' && !isTerminal(p.status) && (
+                            {/* After pickup only an admin can cancel, through the status route. */}
+                            {user?.role === 'SENDER' && p.sender?.id === user.id && p.status === 'PENDING' && !p.isBlocked && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -354,15 +363,24 @@ export default function ParcelsPage() {
                                 Cancel
                               </Button>
                             )}
-                            {user?.role === 'RECEIVER' && !isTerminal(p.status) && (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                disabled={busy}
-                                onClick={() => run(() => api.confirmParcel(p.trackingId), 'Delivery confirmed')}
-                              >
-                                Confirm delivery
-                              </Button>
+                            {addressedToMe && allowedTransitions(p.status).includes('DELIVERED') && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  disabled={busy || p.isBlocked || cashDue}
+                                  onClick={() => run(() => api.confirmParcel(p.trackingId), 'Delivery confirmed')}
+                                >
+                                  Confirm delivery
+                                </Button>
+                                {(p.isBlocked || cashDue) && (
+                                  <span className="max-w-[190px] text-[11px] leading-snug text-ink-3">
+                                    {p.isBlocked
+                                      ? 'This parcel is on hold.'
+                                      : `The courier records the ${formatMoney(p.codAmount)} cash handover.`}
+                                  </span>
+                                )}
+                              </>
                             )}
                             {user?.role === 'ADMIN' && (
                               <Button size="sm" variant="secondary" onClick={() => setManageId(p.id)}>
@@ -420,6 +438,7 @@ export default function ParcelsPage() {
                     variant="secondary"
                     disabled={
                       busy ||
+                      managed.isBlocked ||
                       !assignDraft[managed.id] ||
                       assignDraft[managed.id] === managed.deliveryPersonnel?.id
                     }
@@ -451,7 +470,7 @@ export default function ParcelsPage() {
                   <select
                     className={`${modalField} w-full`}
                     value={managedDraft.status}
-                    disabled={isTerminal(managed.status)}
+                    disabled={isTerminal(managed.status) || managed.isBlocked}
                     onChange={(e) =>
                       setStatusDraft({
                         ...statusDraft,
@@ -460,9 +479,15 @@ export default function ParcelsPage() {
                     }
                   >
                     <option value={managed.status}>{formatStatus(managed.status)}</option>
-                    {allowedTransitions(managed.status).map((s) => (
-                      <option key={s} value={s}>{formatStatus(s)}</option>
-                    ))}
+                    {allowedTransitions(managed.status).map((s) => {
+                      // Cash on delivery closes through delivery proof, never from here.
+                      const locked = s === 'DELIVERED' && needsProof(managed);
+                      return (
+                        <option key={s} value={s} disabled={locked}>
+                          {formatStatus(s)}{locked ? ' (record delivery proof to collect cash)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                   <input
                     className={`${modalField} w-full`}
@@ -480,6 +505,11 @@ export default function ParcelsPage() {
                       This parcel is {formatStatus(managed.status).toLowerCase()} — its status can no longer change.
                     </p>
                   )}
+                  {managed.isBlocked && !isTerminal(managed.status) && (
+                    <p className="text-xs text-ink-3">
+                      This parcel is on hold — unblock it to assign a courier or change its status.
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -494,7 +524,10 @@ export default function ParcelsPage() {
                   disabled={busy}
                   onClick={() =>
                     run(
-                      () => api.blockParcel(managed.trackingId),
+                      () =>
+                        managed.isBlocked
+                          ? api.unblockParcel(managed.trackingId)
+                          : api.blockParcel(managed.trackingId),
                       managed.isBlocked ? 'Parcel unblocked' : 'Parcel blocked',
                     )
                   }
@@ -502,7 +535,7 @@ export default function ParcelsPage() {
                   {managed.isBlocked ? 'Unblock parcel' : 'Block parcel'}
                 </Button>
                 <Button
-                  disabled={busy || managedDraft.status === managed.status}
+                  disabled={busy || managed.isBlocked || managedDraft.status === managed.status}
                   onClick={() =>
                     run(
                       () =>

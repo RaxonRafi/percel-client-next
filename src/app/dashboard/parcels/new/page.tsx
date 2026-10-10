@@ -35,7 +35,7 @@ export default function NewParcelPage() {
   const role = user?.role;
   const canCreate = role === 'SENDER' || role === 'ADMIN';
 
-  // Only admins may list users; senders type the receiver's ID instead.
+  // Only admins may list users; senders type the receiver's email or ID instead.
   useEffect(() => {
     if (role !== 'ADMIN') return;
     let cancelled = false;
@@ -57,8 +57,10 @@ export default function NewParcelPage() {
     setError('');
     setBusy(true);
     try {
+      // The typed field takes either; the admin's dropdown always yields an id.
+      const receiver = form.receiverId.trim();
       await api.createParcel({
-        receiverId: form.receiverId,
+        ...(receiver.includes('@') ? { receiverEmail: receiver } : { receiverId: receiver }),
         receiverName: form.receiverName,
         pickupAddress: form.pickupAddress,
         deliveryAddress: form.deliveryAddress,
@@ -137,7 +139,7 @@ export default function NewParcelPage() {
                 <input
                   id="receiverId"
                   className={field}
-                  placeholder="Receiver UUID"
+                  placeholder="Receiver's email, or their account ID"
                   value={form.receiverId}
                   onChange={(e) => setForm({ ...form, receiverId: e.target.value })}
                   required

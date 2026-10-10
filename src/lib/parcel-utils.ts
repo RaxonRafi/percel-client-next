@@ -51,6 +51,15 @@ export function allowedTransitions(
     : moves;
 }
 
+/**
+ * A cash-on-delivery parcel can only be closed through delivery proof, which
+ * records the cash. The status route and receiver confirmation answer 400
+ * until then.
+ */
+export function needsProof(parcel: Pick<Parcel, 'codAmount' | 'isCodCollected'>): boolean {
+  return parcel.codAmount > 0 && !parcel.isCodCollected;
+}
+
 export function isTerminal(status: ParcelStatus): boolean {
   return TRANSITIONS[status].length === 0;
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, ApiError } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Pagination } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/parcel-utils';
@@ -10,6 +11,7 @@ import type { AccountStatus, PageMeta, Role, User } from '@/lib/types';
 import { Shield, User as UserIcon, X, Plus } from 'lucide-react';
 
 export default function UsersPage() {
+  const { user: me } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [selected, setSelected] = useState<User | null>(null);
   const [error, setError] = useState('');
@@ -153,7 +155,10 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        {u.isActive === 'BLOCKED' ? (
+                        {/* The API refuses an admin blocking their own account. */}
+                        {u.id === me?.id ? (
+                          <span className="text-[11px] text-ink-3">You</span>
+                        ) : u.isActive === 'BLOCKED' ? (
                           <Button
                             size="sm"
                             variant="secondary"

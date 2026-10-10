@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { ApiError } from '@/lib/api';
+import { rateLimitMessage, refreshAccessToken } from '@/lib/api';
 import { getAccessToken, onAuthChange } from '@/lib/auth-storage';
 import { API_BASE_URL } from '@/lib/config';
 import { Icon } from '@/components/icon-sprite';
@@ -91,6 +91,8 @@ export function ChatWidget() {
   // `/rag/ask` needs a signed-in user — each call bills an embedding and a
   // completion — but this widget also renders on the public pages.
   const [signedIn, setSignedIn] = useState(false);
+  // The API answers 503 when it has no AI provider keys; asking again won't help.
+  const [unavailable, setUnavailable] = useState(false);
 
   const bodyRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,7 +132,7 @@ export function ChatWidget() {
   }, [messages, isOpen, isLoading]);
 
   const handleSend = async (text: string) => {
-    if (!text.trim() || isLoading || !signedIn) return;
+    if (!text.trim() || isLoading || !signedIn || unavailable) return;
 
     const assistantId = crypto.randomUUID();
     setMessages((prev) => [
@@ -147,19 +149,30 @@ export function ChatWidget() {
       setMessages((prev) => prev.map((m) => (m.id === assistantId ? update(m) : m)));
 
     try {
-      const token = getAccessToken();
-      const res = await fetch(`${API_BASE_URL}/rag/ask/stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ question: text.trim(), filter: 'parcel' }),
-      });
+      const ask = (token: string | null) =>
+        fetch(`${API_BASE_URL}/rag/ask/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ question: text.trim(), filter: 'parcel' }),
+        });
 
+      let res = await ask(getAccessToken());
+      // An expired access token is not a signed-out user: rotate and retry once.
+      if (res.status === 401) {
+        const fresh = await refreshAccessToken();
+        if (fresh) res = await ask(fresh);
+      }
+
+      // Failures arrive as an ordinary JSON error before the stream starts.
       if (!res.ok) {
         if (res.status === 401) setSignedIn(false);
-        throw new Error('Failed to connect to assistant');
+        if (res.status === 503) setUnavailable(true);
+        if (res.status === 429) throw new Error(rateLimitMessage(res));
+        const body = await res.json().catch(() => null);
+        throw new Error(typeof body?.message === 'string' ? body.message : 'Failed to connect to assistant');
       }
       if (!res.body) throw new Error('ReadableStream not supported');
 
@@ -179,21 +192,22 @@ export function ChatWidget() {
             if (!part.startsWith('data: ')) continue;
             const dataStr = part.slice(6).trim();
             if (!dataStr) continue;
+            let data;
             try {
-              const data = JSON.parse(dataStr);
-              if (data.type === 'sources') patch((m) => ({ ...m, sources: data.sources }));
-              else if (data.type === 'token') patch((m) => ({ ...m, content: m.content + data.token }));
-              else if (data.type === 'done') done = true;
-              else if (data.type === 'error') throw new Error(data.message);
+              data = JSON.parse(dataStr);
             } catch {
               // Ignore a malformed chunk; events are `\n\n`-delimited so this is rare.
+              continue;
             }
+            if (data.type === 'sources') patch((m) => ({ ...m, sources: data.sources }));
+            else if (data.type === 'token') patch((m) => ({ ...m, content: m.content + data.token }));
+            else if (data.type === 'done') done = true;
+            else if (data.type === 'error') throw new Error(data.message);
           }
         }
         if (readerDone) done = true;
       }
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) setSignedIn(false);
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
       // Drop the empty assistant message if it failed before generating anything
       setMessages((prev) => {
@@ -275,7 +289,11 @@ export function ChatWidget() {
               {error && <p className="chat-error" role="alert">{error}</p>}
             </div>
 
-            {signedIn ? (
+            {unavailable ? (
+              <div className="chat-signin">
+                <p>Copilot is switched off on this server right now. Please try again later.</p>
+              </div>
+            ) : signedIn ? (
               <>
                 {/* Suggestions only until the first question has been asked */}
                 {messages.length === 1 && (

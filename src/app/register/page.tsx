@@ -9,12 +9,12 @@ import { AuthShell, PasswordField, SubmitButton, shake } from '@/components/auth
 import { Icon } from '@/components/icon-sprite';
 
 /**
- * Only these two are meaningful on a public registration: any other role sent
- * without an admin token is ignored and the account is created as SENDER.
- * DELIVERY_PERSONNEL lands at PENDING_DELIVERY until an admin approves it.
+ * The roles a public registration may ask for; only ADMIN needs an admin's
+ * token. DELIVERY_PERSONNEL lands at PENDING_DELIVERY until an admin approves it.
  */
 const INTENTS: { role: Role; title: string; blurb: string; icon: string }[] = [
   { role: 'SENDER', title: 'Send parcels', blurb: 'Book shipments and track them.', icon: 'i-box' },
+  { role: 'RECEIVER', title: 'Receive parcels', blurb: 'Follow deliveries sent to you.', icon: 'i-home' },
   { role: 'DELIVERY_PERSONNEL', title: 'Deliver parcels', blurb: 'Apply as a delivery partner.', icon: 'i-truck' },
 ];
 

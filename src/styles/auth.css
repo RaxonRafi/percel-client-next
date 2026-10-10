@@ -75,7 +75,7 @@
     .btn[disabled] { pointer-events: none; opacity: .92; }
 
     /* Role picker */
-    .roles { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .roles { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .role { position: relative; display: block; cursor: pointer; }
     .role input { position: absolute; opacity: 0; }
     .role-card { display: grid; gap: 10px; height: 100%; padding: 16px; border-radius: 16px; background: var(--white); border: 1.5px solid #dfe3dd; transition: border-color .25s, background .25s, box-shadow .25s; }

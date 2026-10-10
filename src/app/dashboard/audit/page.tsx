@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { Pagination } from '@/components/ui/pagination';
 import { formatDate } from '@/lib/parcel-utils';
 import type { PageMeta, AuditLog, AuditLogAction, AuditLogTargetType } from '@/lib/types';
-import { ShieldAlert, User, Package, UserCheck, UserX, Truck, PlayCircle, Settings, Shield } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, User, Package, UserCheck, UserX, Truck, PlayCircle, Settings, Shield } from 'lucide-react';
 
 export default function AuditLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -65,6 +65,7 @@ export default function AuditLogsPage() {
       case 'DELIVERY_APPROVED': return <Truck className="h-4 w-4 text-emerald-600" />;
       case 'DELIVERY_REJECTED': return <ShieldAlert className="h-4 w-4 text-rose-600" />;
       case 'PARCEL_BLOCKED': return <ShieldAlert className="h-4 w-4 text-amber-600" />;
+      case 'PARCEL_UNBLOCKED': return <ShieldCheck className="h-4 w-4 text-emerald-600" />;
       case 'PARCEL_ASSIGNED': return <User className="h-4 w-4 text-accent" />;
       case 'PARCEL_UNASSIGNED': return <UserX className="h-4 w-4 text-amber-600" />;
       case 'PARCEL_STATUS_CHANGED': return <PlayCircle className="h-4 w-4 text-accent" />;
@@ -100,7 +101,7 @@ export default function AuditLogsPage() {
             <option value="">All actions</option>
             {[
               'USER_BLOCKED', 'USER_UNBLOCKED', 'DELIVERY_APPROVED', 'DELIVERY_REJECTED', 
-              'PARCEL_BLOCKED', 'PARCEL_ASSIGNED', 'PARCEL_UNASSIGNED', 'PARCEL_STATUS_CHANGED'
+              'PARCEL_BLOCKED', 'PARCEL_UNBLOCKED', 'PARCEL_ASSIGNED', 'PARCEL_UNASSIGNED', 'PARCEL_STATUS_CHANGED'
             ].map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
           </select>
           

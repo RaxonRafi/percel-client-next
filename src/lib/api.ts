@@ -4,6 +4,7 @@ import {
   getRefreshToken,
   setTokens,
   clearAuth,
+  setAuthNotice,
 } from './auth-storage';
 import type {
   AuthResponse,
@@ -64,6 +65,44 @@ function toQueryString(query?: Record<string, QueryValue>): string {
   return qs ? `?${qs}` : '';
 }
 
+/**
+ * Seconds until a throttled route opens again. The API names the header after
+ * the limit that tripped: general, credential routes, or the assistant.
+ */
+function retryAfterSeconds(res: Response): number | null {
+  for (const name of ['Retry-After', 'Retry-After-auth', 'Retry-After-ai']) {
+    const seconds = Number(res.headers.get(name));
+    if (seconds > 0) return Math.ceil(seconds);
+  }
+  return null;
+}
+
+/** Shared with the chat widget, which streams and so cannot go through `request`. */
+export function rateLimitMessage(res: Response): string {
+  const wait = retryAfterSeconds(res);
+  return wait
+    ? `Too many requests — try again in ${wait} second${wait === 1 ? '' : 's'}.`
+    : 'Too many requests — wait a moment and try again.';
+}
+
+/** What `rag/index/*` accepts per parcel; unknown fields are a 400. */
+function toIndexDocument(parcel: Parcel) {
+  return {
+    id: parcel.id,
+    trackingCode: parcel.trackingId,
+    status: parcel.status,
+    origin: parcel.pickupAddress,
+    destination: parcel.deliveryAddress,
+    recipientName: parcel.receiverName,
+    updatedAt: parcel.updatedAt,
+    // Non-admins are only shown parcels that name them here, so a parcel
+    // indexed without these is visible to admins alone.
+    senderId: parcel.sender?.id,
+    receiverId: parcel.receiver?.id,
+    courierId: parcel.deliveryPersonnel?.id,
+  };
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const isFormData =
     typeof FormData !== 'undefined' && options.body instanceof FormData;
@@ -112,11 +151,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
           ? (data as { message: string[] }).message.join(', ')
           : String((data as { message: string }).message)
         : res.statusText;
-    const fallback =
-      res.status === 429
-        ? 'Too many requests — wait a moment and try again.'
-        : 'Request failed';
-    throw new ApiError(message || fallback, res.status);
+    // The throttler's own body is just "ThrottlerException: Too Many Requests".
+    if (res.status === 429) throw new ApiError(rateLimitMessage(res), 429);
+    throw new ApiError(message || 'Request failed', res.status);
   }
 
   return data as T;
@@ -166,7 +203,10 @@ export const api = {
       auth: false,
     }),
 
-  /** The emailed token is single-use and expires after 30 minutes. */
+  /**
+   * The emailed token is single-use: 30 minutes for a reset, 7 days for an
+   * account-claim link. Success also marks the account verified.
+   */
   resetPassword: (token: string, newPassword: string) =>
     request<MessageResponse>('/auth/reset-password', {
       method: 'POST',
@@ -195,7 +235,10 @@ export const api = {
     name: string;
     email: string;
     password: string;
-    /** `ADMIN` additionally requires an admin bearer token on the request. */
+    /**
+     * Honoured without a token, except `ADMIN`, which needs an admin's bearer
+     * token. `DELIVERY_PERSONNEL` comes back as `PENDING_DELIVERY`.
+     */
     role?: Role;
     phone?: string;
     address?: string;
@@ -263,7 +306,9 @@ export const api = {
     request<Paginated<Parcel>>('/parcels/delivery-history', { query: { ...query } }),
 
   createParcel: (payload: {
-    receiverId: string;
+    /** One of the two is required; an unknown email gets a claimable account. */
+    receiverId?: string;
+    receiverEmail?: string;
     receiverName: string;
     receiverPhone?: string;
     pickupAddress: string;
@@ -281,18 +326,29 @@ export const api = {
       body: note ? { status, note } : { status },
     }),
 
+  /** Sender only, and only while the parcel is still PENDING. */
   cancelParcel: (trackingId: string) =>
     request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/cancel`, {
       method: 'PATCH',
     }),
 
+  /**
+   * Any signed-in account, for a parcel addressed to it. Refused for a COD
+   * parcel until the courier has recorded the cash through delivery proof.
+   */
   confirmParcel: (trackingId: string) =>
     request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/confirm`, {
       method: 'PATCH',
     }),
 
+  /** A blocked parcel refuses status, assign, cancel, confirm and proof. */
   blockParcel: (trackingId: string) =>
     request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/block`, {
+      method: 'PATCH',
+    }),
+
+  unblockParcel: (trackingId: string) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/unblock`, {
       method: 'PATCH',
     }),
 
@@ -348,7 +404,10 @@ export const api = {
 
   /* ----------------------------------------------------------------- RAG */
 
-  /** Needs any signed-in user — each call bills an embedding and a completion. */
+  /**
+   * Needs any signed-in user — each call bills an embedding and a completion.
+   * Answers 503 when the server has no AI provider configured.
+   */
   askRag: (question: string, filter = 'parcel') =>
     request<RagAnswer>('/rag/ask', {
       method: 'POST',
@@ -372,14 +431,18 @@ export const api = {
       method: 'DELETE',
     }),
 
-  indexParcel: (parcelId: string) =>
+  indexParcel: (parcel: Parcel) =>
     request<MessageResponse>('/rag/index/parcel', {
       method: 'POST',
-      body: { parcelId },
+      body: toIndexDocument(parcel),
     }),
 
-  indexAllParcels: () =>
-    request<MessageResponse>('/rag/index/bulk', { method: 'POST', body: {} }),
+  /** At most 500 parcels per call. */
+  indexParcels: (parcels: Parcel[]) =>
+    request<MessageResponse>('/rag/index/bulk', {
+      method: 'POST',
+      body: { parcels: parcels.map(toIndexDocument) },
+    }),
 
   removeIndexedParcel: (id: string) =>
     request<MessageResponse>(`/rag/index/parcel/${encodeURIComponent(id)}`, {
@@ -434,7 +497,10 @@ async function performRefresh(): Promise<string | null> {
     // Persist both halves: the old refresh token is dead from here on.
     setTokens(rotated.accessToken, rotated.refreshToken ?? stored);
     return rotated.accessToken;
-  } catch {
+  } catch (err) {
+    // A blocked or deleted account fails here with a 401 that says why; the
+    // login screen shows it once the redirect lands.
+    if (err instanceof ApiError && err.status === 401) setAuthNotice(err.message);
     clearAuth();
     return null;
   }
