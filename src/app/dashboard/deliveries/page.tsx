@@ -306,7 +306,7 @@ export default function DeliveriesPage() {
                             {formatStatus(p.status)}
                           </span>
                           <span className="text-[10px] text-ink-3">
-                            {formatDate(p.deliveredAt ?? p.updatedAt).split(',')[0]}
+                            {p.deliveredAt ? formatDate(p.deliveredAt).split(',')[0] : '—'}
                           </span>
                         </div>
                       </td>
