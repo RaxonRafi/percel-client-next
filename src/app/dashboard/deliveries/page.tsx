@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { DeliveryProofForm } from '@/components/delivery-proof-form';
 import { api, ApiError } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import type { PageMeta, Parcel, ParcelStatus } from '@/lib/types';
 import {
@@ -24,7 +25,6 @@ export default function DeliveriesPage() {
   const [queuePage, setQueuePage] = useState(1);
   const [donePage, setDonePage] = useState(1);
   const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -49,15 +49,14 @@ export default function DeliveriesPage() {
   async function updateStatus(parcel: Parcel) {
     const draft = drafts[parcel.id] ?? { status: parcel.status, note: '' };
     setError('');
-    setMsg('');
     setBusy(true);
     try {
       await api.updateParcelStatus(parcel.trackingId, draft.status, draft.note || undefined);
-      setMsg(`${parcel.trackingId} marked ${formatStatus(draft.status)}`);
+      toast.success(`${parcel.trackingId} marked ${formatStatus(draft.status)}`);
       setDrafts({ ...drafts, [parcel.id]: { ...draft, note: '' } });
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update status');
+      toast.error(err instanceof ApiError ? err.message : 'Could not update status');
     } finally {
       setBusy(false);
     }
@@ -81,9 +80,9 @@ export default function DeliveriesPage() {
 
   return (
     <div className="space-y-6 animate-fade-in relative">
-      {(error || msg) && (
-        <div className={`p-3 rounded-xl border text-sm ${error ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
-          {error || msg}
+      {error && (
+        <div className="p-3 rounded-xl border text-sm bg-rose-50 border-rose-200 text-rose-600">
+          {error}
         </div>
       )}
 
@@ -234,9 +233,8 @@ export default function DeliveriesPage() {
                       <DeliveryProofForm
                         parcel={p}
                         onCancel={() => setProofFor(null)}
-                        onDone={async (message) => {
+                        onDone={async () => {
                           setProofFor(null);
-                          setMsg(message);
                           await load();
                         }}
                       />

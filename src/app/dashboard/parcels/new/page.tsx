@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import type { User } from '@/lib/types';
 
@@ -29,7 +30,6 @@ export default function NewParcelPage() {
   const { user } = useAuth();
   const [receivers, setReceivers] = useState<User[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const role = user?.role;
@@ -54,12 +54,11 @@ export default function NewParcelPage() {
 
   async function createParcel(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     setBusy(true);
     try {
       // The typed field takes either; the admin's dropdown always yields an id.
       const receiver = form.receiverId.trim();
-      await api.createParcel({
+      const parcel = await api.createParcel({
         ...(receiver.includes('@') ? { receiverEmail: receiver } : { receiverId: receiver }),
         receiverName: form.receiverName,
         pickupAddress: form.pickupAddress,
@@ -69,9 +68,10 @@ export default function NewParcelPage() {
         weightKg: Number(form.weightKg),
         codAmount: form.codAmount ? Number(form.codAmount) : undefined,
       });
+      toast.success(`Shipment ${parcel.trackingId} created`);
       router.push('/dashboard/parcels');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Request failed');
+      toast.error(err instanceof ApiError ? err.message : 'Request failed');
       setBusy(false);
     }
   }
@@ -93,12 +93,6 @@ export default function NewParcelPage() {
           Enter the receiver and route. The delivery fee is calculated when the parcel is created.
         </p>
       </div>
-
-      {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-600">
-          {error}
-        </div>
-      )}
 
       {!canCreate ? (
         <div className="rounded-xl border border-surface-3 bg-white p-6 text-sm text-ink-2 shadow-sm">

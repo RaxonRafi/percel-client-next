@@ -7,6 +7,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DeliveryProofForm } from '@/components/delivery-proof-form';
 import { api, ApiError } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import {
   PARCEL_STATUSES,
@@ -36,7 +37,6 @@ export default function ParcelsPage() {
   const [proofFor, setProofFor] = useState<Parcel | null>(null);
   const [manageId, setManageId] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
   const [meta, setMeta] = useState<PageMeta | null>(null);
@@ -99,14 +99,13 @@ export default function ParcelsPage() {
 
   async function run(action: () => Promise<unknown>, success: string) {
     setError('');
-    setMsg('');
     setBusy(true);
     try {
       await action();
-      setMsg(success);
+      toast.success(success);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Request failed');
+      toast.error(err instanceof ApiError ? err.message : 'Request failed');
     } finally {
       setBusy(false);
     }
@@ -121,9 +120,9 @@ export default function ParcelsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in relative">
-      {(error || msg) && (
-        <div className={`p-3 rounded-xl border text-sm ${error ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
-          {error || msg}
+      {error && (
+        <div className="p-3 rounded-xl border text-sm bg-rose-50 border-rose-200 text-rose-600">
+          {error}
         </div>
       )}
 
@@ -301,9 +300,8 @@ export default function ParcelsPage() {
                                 <DeliveryProofForm
                                   parcel={p}
                                   onCancel={() => setProofFor(null)}
-                                  onDone={async (message) => {
+                                  onDone={async () => {
                                     setProofFor(null);
-                                    setMsg(message);
                                     await load();
                                   }}
                                 />
@@ -512,10 +510,6 @@ export default function ParcelsPage() {
                   )}
                 </div>
               </section>
-
-              {(error || msg) && (
-                <p className={`text-xs ${error ? 'text-rose-600' : 'text-emerald-600'}`}>{error || msg}</p>
-              )}
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-surface-3 pt-4">
                 <Button

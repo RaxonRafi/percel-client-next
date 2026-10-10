@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/lib/api';
 import { formatMoney } from '@/lib/parcel-utils';
+import { toast } from '@/lib/toast';
 import type { Parcel } from '@/lib/types';
 
 const MAX_IMAGES = 5;
@@ -19,7 +20,7 @@ export function DeliveryProofForm({
   onCancel,
 }: {
   parcel: Parcel;
-  onDone: (message: string) => void;
+  onDone: () => void;
   onCancel: () => void;
 }) {
   const hasCod = parcel.codAmount > 0;
@@ -51,9 +52,10 @@ export function DeliveryProofForm({
         note: note.trim() || undefined,
         codCollected,
       });
-      onDone(`${parcel.trackingId} delivered`);
+      toast.success(`${parcel.trackingId} delivered`);
+      onDone();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not submit proof');
+      toast.error(err instanceof ApiError ? err.message : 'Could not submit proof');
     } finally {
       setBusy(false);
     }

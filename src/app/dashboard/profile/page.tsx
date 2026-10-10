@@ -6,6 +6,7 @@ import { MotionConfig, motion } from 'motion/react';
 import { api, ApiError, logout } from '@/lib/api';
 import { clearAuth } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
+import { toast } from '@/lib/toast';
 import { EASE } from '@/lib/motion';
 import type { User } from '@/lib/types';
 import { Icon } from '@/components/icon-sprite';
@@ -77,8 +78,6 @@ function ProfileContent({ user }: { user: User }) {
     nidNumber: user.nidNumber ?? '',
   });
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
-  const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
   const dirty =
@@ -89,8 +88,6 @@ function ProfileContent({ user }: { user: User }) {
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    setMsg('');
     setBusy(true);
     try {
       const updated = await api.updateProfile({
@@ -100,9 +97,9 @@ function ProfileContent({ user }: { user: User }) {
         nidNumber: profile.nidNumber || null,
       });
       applyUser(updated);
-      setMsg('Profile updated.');
+      toast.success('Profile updated');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update profile');
+      toast.error(err instanceof ApiError ? err.message : 'Could not update profile');
     } finally {
       setBusy(false);
     }
@@ -110,36 +107,32 @@ function ProfileContent({ user }: { user: User }) {
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
-    setMsg('');
     if (passwords.next !== passwords.confirm) {
-      setError('The new passwords do not match');
+      toast.error('The new passwords do not match');
       return;
     }
     setBusy(true);
     try {
       await api.changePassword(passwords.current, passwords.next);
       setPasswords({ current: '', next: '', confirm: '' });
-      setMsg('Password changed. Signing you back in…');
+      toast.success('Password changed — sign in again');
       clearAuth();
       router.replace('/login');
       return;
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not change password');
+      toast.error(err instanceof ApiError ? err.message : 'Could not change password');
     } finally {
       setBusy(false);
     }
   }
 
   async function resendVerification() {
-    setError('');
-    setMsg('');
     setBusy(true);
     try {
       await api.resendVerification(user.email);
-      setMsg('Confirmation email sent — check your inbox.');
+      toast.success('Confirmation email sent — check your inbox');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send the email');
+      toast.error(err instanceof ApiError ? err.message : 'Could not send the email');
     } finally {
       setBusy(false);
     }
@@ -185,19 +178,6 @@ function ProfileContent({ user }: { user: User }) {
             </div>
           </dl>
         </motion.section>
-
-        {(error || msg) && (
-          <motion.div
-            className={`profile-flash${error ? ' error' : ''}`}
-            role={error ? 'alert' : 'status'}
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Icon name={error ? 'i-alert' : 'i-check'} size={16} />
-            {error || msg}
-          </motion.div>
-        )}
 
         {!user.isVerified && (
           <motion.section className="profile-verify" {...rise(0.06)}>

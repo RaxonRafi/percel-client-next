@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { Pagination } from '@/components/ui/pagination';
 import { formatDate } from '@/lib/parcel-utils';
 import { useAuth } from '@/lib/auth-context';
@@ -18,7 +19,6 @@ export default function CourierApplicationsPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -37,14 +37,13 @@ export default function CourierApplicationsPage() {
 
   async function run(action: () => Promise<unknown>, success: string) {
     setError('');
-    setMsg('');
     setBusy(true);
     try {
       await action();
-      setMsg(success);
+      toast.success(success);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Request failed');
+      toast.error(err instanceof ApiError ? err.message : 'Request failed');
     } finally {
       setBusy(false);
     }
@@ -64,9 +63,9 @@ export default function CourierApplicationsPage() {
 
   return (
     <div className="space-y-6 animate-fade-in relative">
-      {(error || msg) && (
-        <div className={`p-3 rounded-xl border text-sm ${error ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
-          {error || msg}
+      {error && (
+        <div className="p-3 rounded-xl border text-sm bg-rose-50 border-rose-200 text-rose-600">
+          {error}
         </div>
       )}
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import { Database, UploadCloud, Trash2, ShieldAlert, Activity, FileText, Search, Settings } from 'lucide-react';
 
@@ -17,8 +18,6 @@ export default function KnowledgePage() {
   const [parcelId, setParcelId] = useState('');
   const [removeId, setRemoveId] = useState('');
   const [health, setHealth] = useState('');
-  const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -26,14 +25,12 @@ export default function KnowledgePage() {
   }, []);
 
   async function run(action: () => Promise<{ message?: string } | void>, fallback: string) {
-    setError('');
-    setMsg('');
     setBusy(true);
     try {
       const res = await action();
-      setMsg(res?.message ?? fallback);
+      toast.success(res?.message ?? fallback);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Request failed');
+      toast.error(err instanceof ApiError ? err.message : 'Request failed');
     } finally {
       setBusy(false);
     }
@@ -63,15 +60,15 @@ export default function KnowledgePage() {
     e.preventDefault();
     const file = fileInput.current?.files?.[0];
     if (!file) {
-      setError('Choose a PDF first');
+      toast.error('Choose a PDF first');
       return;
     }
     if (file.type !== 'application/pdf') {
-      setError('Only PDF files are accepted');
+      toast.error('Only PDF files are accepted');
       return;
     }
     if (file.size > MAX_PDF_BYTES) {
-      setError('That PDF is over the 10 MB limit');
+      toast.error('That PDF is over the 10 MB limit');
       return;
     }
     await run(async () => {
@@ -96,12 +93,6 @@ export default function KnowledgePage() {
 
   return (
     <div className="space-y-6 animate-fade-in relative max-w-5xl">
-      {(error || msg) && (
-        <div className={`p-3 rounded-xl border text-sm ${error ? 'bg-rose-50 border-rose-200 text-rose-600' : 'bg-emerald-50 border-emerald-200 text-emerald-600'}`}>
-          {error || msg}
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl font-bold text-ink flex items-center gap-2">

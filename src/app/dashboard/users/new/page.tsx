@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/lib/api';
+import { toast } from '@/lib/toast';
 import type { Role } from '@/lib/types';
 
 const field =
@@ -20,18 +21,17 @@ export default function NewUserPage() {
     password: string;
     role: Role;
   }>({ name: '', email: '', password: '', role: 'ADMIN' });
-  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function createAccount(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     setBusy(true);
     try {
       await api.register(form);
+      toast.success(`Account created for ${form.name}`);
       router.push('/dashboard/users');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Request failed');
+      toast.error(err instanceof ApiError ? err.message : 'Request failed');
       setBusy(false);
     }
   }
@@ -53,12 +53,6 @@ export default function NewUserPage() {
           Provision an account with a temporary password the user can change after signing in.
         </p>
       </div>
-
-      {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-600">
-          {error}
-        </div>
-      )}
 
       <form onSubmit={createAccount} className="rounded-xl border border-surface-3 bg-white shadow-sm">
         <div className="grid gap-5 p-6 sm:grid-cols-2">
