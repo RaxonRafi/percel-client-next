@@ -219,6 +219,7 @@ them to `SENDER` so the account stays usable and they can apply again.
 | ADMIN | `PATCH` | `/api/parcels/:trackingId/block` | `Parcel` |
 | ADMIN | `PATCH` | `/api/parcels/:trackingId/assign` | `Parcel` — body `{ deliveryPersonnelId }` |
 | ADMIN | `PATCH` | `/api/parcels/:trackingId/unassign` | `Parcel` |
+| ADMIN | `POST` | `/api/parcels/reindex` | `{ message: string; indexed: number }` — rebuilds the assistant index from the database |
 | ADMIN, DELIVERY_PERSONNEL | `PATCH` | `/api/parcels/:trackingId/status` | `Parcel` |
 | ADMIN, DELIVERY_PERSONNEL | `PATCH` | `/api/parcels/:trackingId/delivery-proof` | `Parcel` |
 | DELIVERY_PERSONNEL | `GET` | `/api/parcels/assigned-parcels` | `Paginated<Parcel>` — active queue |

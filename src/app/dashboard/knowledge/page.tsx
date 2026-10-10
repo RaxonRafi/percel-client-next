@@ -45,15 +45,11 @@ export default function KnowledgePage() {
     return api.indexParcel(parcel);
   }
 
+  // One call: the server pages through its own table, so this no longer
+  // downloads every parcel just to post it back.
   async function indexAll() {
-    let total = 0;
-    for (let page = 1; ; page += 1) {
-      const res = await api.getAllParcels({ page, limit: 100 });
-      if (res.data.length > 0) await api.indexParcels(res.data);
-      total += res.data.length;
-      if (!res.meta.hasNext) break;
-    }
-    return { message: total > 0 ? `${total} parcels re-indexed` : 'No parcels to index' };
+    const res = await api.reindexAllParcels();
+    return { message: res.indexed > 0 ? res.message : 'No parcels to index' };
   }
 
   async function uploadPdf(e: React.FormEvent) {

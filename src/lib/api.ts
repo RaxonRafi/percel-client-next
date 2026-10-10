@@ -444,6 +444,15 @@ export const api = {
       body: { parcels: parcels.map(toIndexDocument) },
     }),
 
+  /**
+   * Rebuilds every parcel's vector from the database, owner ids included. The
+   * server reads the parcels itself, so nothing is sent. Safe to repeat.
+   */
+  reindexAllParcels: () =>
+    request<MessageResponse & { indexed: number }>('/parcels/reindex', {
+      method: 'POST',
+    }),
+
   removeIndexedParcel: (id: string) =>
     request<MessageResponse>(`/rag/index/parcel/${encodeURIComponent(id)}`, {
       method: 'DELETE',
