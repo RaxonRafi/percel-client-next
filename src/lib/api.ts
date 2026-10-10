@@ -8,9 +8,15 @@ import {
 } from './auth-storage';
 import type {
   AuthResponse,
+  ChatTurn,
+  ContactMessage,
   DashboardStats,
+  FeeBreakdown,
+  Health,
   ListQuery,
   MessageResponse,
+  Session,
+  StoredNotification,
   Paginated,
   Parcel,
   ParcelQuery,
@@ -188,6 +194,15 @@ export const api = {
       skipRefresh: true,
     }),
 
+  /** The user's signed-in devices, newest first. */
+  getSessions: () => request<Session[]>('/auth/sessions'),
+
+  /** Signs one device out. Only the caller's own sessions exist to it. */
+  endSession: (id: string) =>
+    request<MessageResponse>(`/auth/sessions/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+
   /** Ends every session for the user, this one included. */
   changePassword: (currentPassword: string, newPassword: string) =>
     request<MessageResponse>('/auth/change-password', {
@@ -251,9 +266,49 @@ export const api = {
 
   updateProfile: (
     payload: Partial<
-      Pick<User, 'name' | 'phone' | 'address' | 'picture' | 'nidNumber'>
+      Pick<
+        User,
+        | 'name'
+        | 'phone'
+        | 'address'
+        | 'picture'
+        | 'nidNumber'
+        | 'nidImage'
+        | 'emailNotifications'
+      >
     >,
   ) => request<User>('/users/update-profile', { method: 'PATCH', body: payload }),
+
+  /**
+   * Soft-deletes the caller's account and ends every session. The password is
+   * asked for again: a stolen access token alone must not be enough.
+   */
+  deleteAccount: (password: string) =>
+    request<MessageResponse>('/users/me', {
+      method: 'DELETE',
+      body: { password },
+    }),
+
+  /**
+   * Admin edit of someone else's account. Email and password are not editable;
+   * an admin cannot change their own role, nor the super admin's.
+   */
+  adminUpdateUser: (
+    id: string,
+    payload: Partial<
+      Pick<User, 'name' | 'phone' | 'address' | 'nidNumber' | 'nidImage' | 'role' | 'isVerified'>
+    >,
+  ) =>
+    request<User>(`/users/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: payload,
+    }),
+
+  /** Admin soft delete. Refused for yourself and for the super admin. */
+  adminDeleteUser: (id: string) =>
+    request<MessageResponse>(`/users/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
 
   getAllUsers: (query: UserQuery = {}) =>
     request<Paginated<User>>('/users/all-users', { query: { ...query } }),
@@ -275,6 +330,10 @@ export const api = {
   getCouriers: (query: ListQuery = {}) =>
     request<Paginated<User>>('/users/delivery', { query: { ...query } }),
 
+  /**
+   * Refused with a 400 until the applicant has an ID number and a photo of it
+   * on their profile. Either decision is emailed to them.
+   */
   approveCourier: (userId: string) =>
     request<User>(`/users/${userId}/delivery/approve`, { method: 'PATCH' }),
 
@@ -290,6 +349,21 @@ export const api = {
    */
   getParcel: (trackingId: string) =>
     request<PublicParcel>(`/parcels/${encodeURIComponent(trackingId)}`, {
+      auth: false,
+    }),
+
+  /**
+   * The whole parcel, timeline included — for an admin or one of its parties.
+   * This is the only place a signed-in user gets `statusLogs`; lists omit it.
+   */
+  getParcelDetails: (trackingId: string) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/details`),
+
+  /** Public. Prices a parcel with the booking calculation; stores nothing. */
+  quoteParcel: (payload: { weightKg?: number; codAmount?: number }) =>
+    request<FeeBreakdown>('/parcels/quote', {
+      method: 'POST',
+      body: payload,
       auth: false,
     }),
 
@@ -326,7 +400,10 @@ export const api = {
       body: note ? { status, note } : { status },
     }),
 
-  /** Sender only, and only while the parcel is still PENDING. */
+  /**
+   * For whoever booked it — a sender, or an admin for their own booking — and
+   * only while the parcel is still PENDING.
+   */
   cancelParcel: (trackingId: string) =>
     request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/cancel`, {
       method: 'PATCH',
@@ -408,10 +485,10 @@ export const api = {
    * Needs any signed-in user — each call bills an embedding and a completion.
    * Answers 503 when the server has no AI provider configured.
    */
-  askRag: (question: string, filter = 'parcel') =>
+  askRag: (question: string, filter = 'parcel', history: ChatTurn[] = []) =>
     request<RagAnswer>('/rag/ask', {
       method: 'POST',
-      body: { question, filter },
+      body: { question, filter, ...(history.length ? { history } : {}) },
     }),
 
   // Everything below mutates the vector store and is admin-only.
@@ -449,9 +526,10 @@ export const api = {
    * server reads the parcels itself, so nothing is sent. Safe to repeat.
    */
   reindexAllParcels: () =>
-    request<MessageResponse & { indexed: number }>('/parcels/reindex', {
-      method: 'POST',
-    }),
+    request<MessageResponse & { indexed: number; removed: number }>(
+      '/parcels/reindex',
+      { method: 'POST' },
+    ),
 
   removeIndexedParcel: (id: string) =>
     request<MessageResponse>(`/rag/index/parcel/${encodeURIComponent(id)}`, {
@@ -460,13 +538,15 @@ export const api = {
 
   /* ------------------------------------------------------------- Contact */
 
-  /** Public. Emails the support inbox; nothing is stored. */
+  /** Public. Stored, and emailed to the support inbox. */
   sendContactMessage: (payload: {
     name: string;
     email: string;
     topic: 'sending' | 'tracking' | 'courier' | 'other';
     trackingId?: string;
     message: string;
+    /** Honeypot — only ever filled in by a bot, which the server discards. */
+    website?: string;
   }) =>
     request<MessageResponse>('/contact', {
       method: 'POST',
@@ -474,10 +554,41 @@ export const api = {
       auth: false,
     }),
 
+  /** Admin only. Contact-form messages, newest first. */
+  getContactMessages: (query: ListQuery = {}) =>
+    request<Paginated<ContactMessage>>('/contact/messages', { query: { ...query } }),
+
+  /* ------------------------------------------------------- Notifications */
+
+  /** The caller's inbox, newest first; kept for 90 days. */
+  getNotifications: (query: ListQuery & { unread?: boolean } = {}) =>
+    request<Paginated<StoredNotification>>('/notifications', { query: { ...query } }),
+
+  getUnreadNotificationCount: () =>
+    request<{ unread: number }>('/notifications/unread-count'),
+
+  markNotificationRead: (id: string) =>
+    request<MessageResponse>(`/notifications/${encodeURIComponent(id)}/read`, {
+      method: 'PATCH',
+    }),
+
+  markAllNotificationsRead: () =>
+    request<MessageResponse>('/notifications/read-all', { method: 'PATCH' }),
+
   /* -------------------------------------------------------------- System */
 
-  /** `GET /api` — plain-text health probe. */
-  health: () => request<string>('', { auth: false, text: true }),
+  /**
+   * `GET /api/health`. A degraded API answers 503 with the same body, so that
+   * is returned rather than thrown: the caller wants to know what is down.
+   */
+  getHealth: async (): Promise<Health> => {
+    const res = await fetch(`${API_BASE_URL}/health`);
+    const body = (await res.json().catch(() => null)) as Health | null;
+    if (!body || typeof body.status !== 'string') {
+      throw new ApiError(res.statusText || 'Health check failed', res.status);
+    }
+    return body;
+  },
 
   /* --------------------------------------------------------------- Audit */
 

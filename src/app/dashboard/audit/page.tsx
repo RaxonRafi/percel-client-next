@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Pagination } from '@/components/ui/pagination';
 import { formatDate } from '@/lib/parcel-utils';
+import { AUDIT_LOG_ACTIONS } from '@/lib/types';
 import type { PageMeta, AuditLog, AuditLogAction, AuditLogTargetType } from '@/lib/types';
 import { ShieldAlert, ShieldCheck, User, Package, UserCheck, UserX, Truck, PlayCircle, Settings, Shield } from 'lucide-react';
 
@@ -62,6 +63,12 @@ export default function AuditLogsPage() {
     switch(action) {
       case 'USER_BLOCKED': return <UserX className="h-4 w-4 text-rose-600" />;
       case 'USER_UNBLOCKED': return <UserCheck className="h-4 w-4 text-emerald-600" />;
+      case 'USER_UPDATED': return <User className="h-4 w-4 text-accent" />;
+      case 'USER_DELETED': return <UserX className="h-4 w-4 text-rose-600" />;
+      case 'PARCEL_CREATED': return <Package className="h-4 w-4 text-accent" />;
+      case 'PARCEL_CANCELLED': return <ShieldAlert className="h-4 w-4 text-rose-600" />;
+      case 'PARCEL_DELIVERY_CONFIRMED': return <ShieldCheck className="h-4 w-4 text-emerald-600" />;
+      case 'PARCEL_PROOF_SUBMITTED': return <Truck className="h-4 w-4 text-emerald-600" />;
       case 'DELIVERY_APPROVED': return <Truck className="h-4 w-4 text-emerald-600" />;
       case 'DELIVERY_REJECTED': return <ShieldAlert className="h-4 w-4 text-rose-600" />;
       case 'PARCEL_BLOCKED': return <ShieldAlert className="h-4 w-4 text-amber-600" />;
@@ -99,10 +106,7 @@ export default function AuditLogsPage() {
             onChange={(e) => applyFilter({ action: e.target.value })}
           >
             <option value="">All actions</option>
-            {[
-              'USER_BLOCKED', 'USER_UNBLOCKED', 'DELIVERY_APPROVED', 'DELIVERY_REJECTED', 
-              'PARCEL_BLOCKED', 'PARCEL_UNBLOCKED', 'PARCEL_ASSIGNED', 'PARCEL_UNASSIGNED', 'PARCEL_STATUS_CHANGED'
-            ].map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
+            {AUDIT_LOG_ACTIONS.map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
           </select>
           
           <select

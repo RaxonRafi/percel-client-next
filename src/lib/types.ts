@@ -93,6 +93,8 @@ export interface User {
   isVerified: boolean;
   nidNumber: string | null;
   nidImage: string[];
+  /** Parcel update emails. Account and security mail is sent regardless. */
+  emailNotifications: boolean;
   auths: AuthProvider[];
   createdAt: string;
   updatedAt: string;
@@ -102,6 +104,37 @@ export interface AuthResponse {
   user: User;
   accessToken: string;
   refreshToken: string;
+}
+
+/** One signed-in device, from `GET /auth/sessions`. */
+export interface Session {
+  id: string;
+  userAgent: string | null;
+  ip: string | null;
+  /** When this device signed in or last refreshed its token. */
+  createdAt: string;
+  expiresAt: string;
+  /** Only known when the server sees the refresh cookie, which this client does not send. */
+  current: boolean;
+}
+
+/** `GET /health` — answers 503 with `status: 'degraded'` when the database is down. */
+export interface Health {
+  status: 'ok' | 'degraded';
+  uptime: number;
+  database: 'up' | 'down';
+  assistant: boolean;
+  mail: boolean;
+  /** False on a serverless API host: do not open a socket, poll instead. */
+  realtime: boolean;
+}
+
+/** How a delivery fee is made up. `total` is what the sender pays. */
+export interface FeeBreakdown {
+  baseFee: number;
+  weightFee: number;
+  codFee: number;
+  total: number;
 }
 
 export interface DashboardStats {
@@ -137,6 +170,8 @@ export interface Parcel {
   weightKg: number;
   /** Computed server-side from weight and COD — the client never sends a price. */
   deliveryFee: number;
+  /** Frozen at booking; null on parcels booked before it was recorded. */
+  feeBreakdown: FeeBreakdown | null;
   /** Cash to collect on delivery; 0 means prepaid. */
   codAmount: number;
   isCodCollected: boolean;
@@ -149,16 +184,21 @@ export interface Parcel {
   receiver: User;
   /** The assigned courier, or null while the parcel is unassigned. */
   deliveryPersonnel: User | null;
-  statusLogs: ParcelStatusLog[];
+  /**
+   * The timeline. Lists leave it out; it comes with a single parcel — from
+   * `GET /parcels/:trackingId/details` or the response to a mutation.
+   */
+  statusLogs?: ParcelStatusLog[];
   createdAt: string;
   updatedAt: string;
 }
 
 /**
  * What the public tracking route returns — an allow-list, not a `Parcel`.
- * No nested user records, no internal id, no phone numbers, and the courier is
- * reduced to a first name. Anything the dashboard shows beyond this needs an
- * authenticated route.
+ * No nested user records, no internal id, no phone numbers. It is masked too:
+ * names are a first name and an initial ("Jane D."), the two addresses are the
+ * area only ("Gulshan, Dhaka"), and the courier is a first name. The full
+ * record is on the authenticated `details` route, for the parcel's parties.
  */
 export interface PublicParcel {
   trackingId: string;
@@ -217,16 +257,25 @@ export interface DashboardTrends {
   averageFulfilmentHours: number | null;
 }
 
-export type AuditLogAction =
-  | 'USER_BLOCKED'
-  | 'USER_UNBLOCKED'
-  | 'DELIVERY_APPROVED'
-  | 'DELIVERY_REJECTED'
-  | 'PARCEL_BLOCKED'
-  | 'PARCEL_UNBLOCKED'
-  | 'PARCEL_ASSIGNED'
-  | 'PARCEL_UNASSIGNED'
-  | 'PARCEL_STATUS_CHANGED';
+export const AUDIT_LOG_ACTIONS = [
+  'USER_BLOCKED',
+  'USER_UNBLOCKED',
+  'USER_UPDATED',
+  'USER_DELETED',
+  'DELIVERY_APPROVED',
+  'DELIVERY_REJECTED',
+  'PARCEL_CREATED',
+  'PARCEL_CANCELLED',
+  'PARCEL_DELIVERY_CONFIRMED',
+  'PARCEL_PROOF_SUBMITTED',
+  'PARCEL_STATUS_CHANGED',
+  'PARCEL_BLOCKED',
+  'PARCEL_UNBLOCKED',
+  'PARCEL_ASSIGNED',
+  'PARCEL_UNASSIGNED',
+] as const;
+
+export type AuditLogAction = (typeof AUDIT_LOG_ACTIONS)[number];
 
 export type AuditLogTargetType = 'USER' | 'PARCEL';
 
@@ -247,7 +296,39 @@ export interface AuditLogQuery extends ListQuery {
   targetId?: string;
 }
 
-/** Pushed over Socket.IO by the API's realtime gateway. Never persisted. */
+/** A row of the user's inbox, from `GET /notifications`. */
+export interface StoredNotification {
+  id: string;
+  type: RealtimeNotification['type'];
+  title: string;
+  message: string;
+  trackingId: string | null;
+  status: ParcelStatus | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** A message from the public contact form, as an admin reads it. */
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  topic: string;
+  trackingId: string | null;
+  message: string;
+  createdAt: string;
+}
+
+/** One earlier turn of a conversation with the assistant. */
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * Pushed over Socket.IO by the API's realtime gateway. The `id` is the id of
+ * the same notification in the user's inbox.
+ */
 export interface RealtimeNotification {
   id: string;
   type:

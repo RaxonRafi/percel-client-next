@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { setAuth } from '@/lib/auth-storage';
+import { passwordProblem } from '@/lib/password';
 import type { Role } from '@/lib/types';
 import { AuthShell, PasswordField, SubmitButton, shake } from '@/components/auth/auth-shell';
 import { Icon } from '@/components/icon-sprite';
@@ -19,7 +20,7 @@ const INTENTS: { role: Role; title: string; blurb: string; icon: string }[] = [
 ];
 
 const STRENGTH = [
-  { label: 'Use 8 or more characters', color: '#c0392b', width: 0 },
+  { label: '8+ characters with upper case, lower case and a number', color: '#c0392b', width: 0 },
   { label: 'Weak', color: '#c0392b', width: 25 },
   { label: 'Fair', color: '#d68910', width: 50 },
   { label: 'Good', color: '#7a9b1f', width: 75 },
@@ -29,6 +30,9 @@ const STRENGTH = [
 /** A rough guide for the meter only — the API enforces the real password rules. */
 function passwordStrength(value: string) {
   if (!value) return STRENGTH[0];
+  // Below the API's own rule the meter says what is missing, not "Weak".
+  const problem = passwordProblem(value);
+  if (problem) return { ...STRENGTH[1], label: problem };
   let score = 0;
   if (value.length >= 8) score += 1;
   if (value.length >= 12) score += 1;
@@ -56,6 +60,12 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    const problem = passwordProblem(form.password);
+    if (problem) {
+      setError(`Password: ${problem.toLowerCase()}`);
+      shake(formRef.current);
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.register({

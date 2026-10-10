@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MotionConfig, motion } from 'motion/react';
 import { api, ApiError, logout } from '@/lib/api';
@@ -8,7 +8,8 @@ import { clearAuth } from '@/lib/auth-storage';
 import { useAuth } from '@/lib/auth-context';
 import { toast } from '@/lib/toast';
 import { EASE } from '@/lib/motion';
-import type { User } from '@/lib/types';
+import { PASSWORD_RULES, passwordProblem } from '@/lib/password';
+import type { Session, User } from '@/lib/types';
 import { Icon } from '@/components/icon-sprite';
 
 const ROLE_LABELS: Record<User['role'], string> = {
@@ -66,6 +67,26 @@ function PasswordInput({
   );
 }
 
+/** "Chrome on Windows" from a user-agent string; enough to recognise a device. */
+function describeDevice(userAgent: string | null): string {
+  if (!userAgent) return 'Unknown device';
+  const browser =
+    /Edg\//.test(userAgent) ? 'Edge'
+    : /OPR\//.test(userAgent) ? 'Opera'
+    : /Firefox\//.test(userAgent) ? 'Firefox'
+    : /Chrome\//.test(userAgent) ? 'Chrome'
+    : /Safari\//.test(userAgent) ? 'Safari'
+    : 'Browser';
+  const system =
+    /Android/.test(userAgent) ? 'Android'
+    : /iPhone|iPad/.test(userAgent) ? 'iOS'
+    : /Windows/.test(userAgent) ? 'Windows'
+    : /Mac OS X/.test(userAgent) ? 'macOS'
+    : /Linux/.test(userAgent) ? 'Linux'
+    : '';
+  return system ? `${browser} on ${system}` : browser;
+}
+
 /** Keyed on the user id by the page, so the form starts from the loaded profile. */
 function ProfileContent({ user }: { user: User }) {
   const router = useRouter();
@@ -76,15 +97,31 @@ function ProfileContent({ user }: { user: User }) {
     phone: user.phone ?? '',
     address: user.address ?? '',
     nidNumber: user.nidNumber ?? '',
+    // One photo is what approval needs; the API keeps a list.
+    nidImage: user.nidImage?.[0] ?? '',
   });
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
   const [busy, setBusy] = useState(false);
+  const [sessions, setSessions] = useState<Session[] | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+
+  const loadSessions = useCallback(() => {
+    api
+      .getSessions()
+      .then(setSessions)
+      .catch(() => setSessions([]));
+  }, []);
+
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
 
   const dirty =
     profile.name !== (user.name ?? '') ||
     profile.phone !== (user.phone ?? '') ||
     profile.address !== (user.address ?? '') ||
-    profile.nidNumber !== (user.nidNumber ?? '');
+    profile.nidNumber !== (user.nidNumber ?? '') ||
+    profile.nidImage !== (user.nidImage?.[0] ?? '');
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
@@ -95,6 +132,7 @@ function ProfileContent({ user }: { user: User }) {
         phone: profile.phone || null,
         address: profile.address || null,
         nidNumber: profile.nidNumber || null,
+        nidImage: profile.nidImage.trim() ? [profile.nidImage.trim()] : [],
       });
       applyUser(updated);
       toast.success('Profile updated');
@@ -109,6 +147,10 @@ function ProfileContent({ user }: { user: User }) {
     e.preventDefault();
     if (passwords.next !== passwords.confirm) {
       toast.error('The new passwords do not match');
+      return;
+    }
+    if (passwordProblem(passwords.next)) {
+      toast.error(PASSWORD_RULES);
       return;
     }
     setBusy(true);
@@ -141,6 +183,48 @@ function ProfileContent({ user }: { user: User }) {
   async function signOut(everywhere = false) {
     await logout({ everywhere });
     router.replace('/login');
+  }
+
+  async function toggleEmails(emailNotifications: boolean) {
+    setBusy(true);
+    try {
+      applyUser(await api.updateProfile({ emailNotifications }));
+      toast.success(emailNotifications ? 'Parcel emails turned on' : 'Parcel emails turned off');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not save that');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function endSession(id: string) {
+    setBusy(true);
+    try {
+      await api.endSession(id);
+      toast.success('That device has been signed out');
+      loadSessions();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not sign that device out');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (!window.confirm('Delete your account? You will be signed out everywhere and will not be able to sign in again.')) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.deleteAccount(deletePassword);
+      toast.success('Your account has been deleted');
+      clearAuth();
+      router.replace('/');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not delete the account');
+      setBusy(false);
+    }
   }
 
   const active = user.isActive === 'ACTIVE';
@@ -192,6 +276,16 @@ function ProfileContent({ user }: { user: User }) {
           </motion.section>
         )}
 
+        {user.role === 'PENDING_DELIVERY' && (!user.nidNumber || !user.nidImage?.length) && (
+          <motion.section className="profile-verify" {...rise(0.08)}>
+            <i><Icon name="i-shield" size={20} /></i>
+            <div>
+              <b>Finish your courier application</b>
+              <p>Add your ID number and a link to a photo of the ID below. An admin cannot approve the application without both.</p>
+            </div>
+          </motion.section>
+        )}
+
         <div className="profile-grid">
           <motion.form className="card profile-card" onSubmit={saveProfile} {...rise(0.12)}>
             <div className="card-head">
@@ -230,6 +324,14 @@ function ProfileContent({ user }: { user: User }) {
                     value={profile.nidNumber} onChange={(e) => setProfile({ ...profile, nidNumber: e.target.value })} />
                 </div>
               </div>
+              <div className="field wide">
+                <label htmlFor="nidImage">Photo of your ID <span className="hint">(a link to the image — needed to be approved as a courier)</span></label>
+                <div className="input-wrap">
+                  <Icon name="i-shield" size={18} />
+                  <input className="input" id="nidImage" type="url" placeholder="https://…"
+                    value={profile.nidImage} onChange={(e) => setProfile({ ...profile, nidImage: e.target.value })} />
+                </div>
+              </div>
               <div className="field">
                 <label htmlFor="email">Email <span className="hint">(cannot be changed)</span></label>
                 <div className="input-wrap">
@@ -249,6 +351,7 @@ function ProfileContent({ user }: { user: User }) {
               <div className="card-head">
                 <div><h2>Password</h2><p>Changing it signs you out of every device</p></div>
               </div>
+              <p className="hint" style={{ margin: '0 0 12px' }}>{PASSWORD_RULES}</p>
               <div className="profile-fields single">
                 <PasswordInput id="current" label="Current password" autoComplete="current-password"
                   value={passwords.current} onChange={(current) => setPasswords({ ...passwords, current })} />
@@ -279,7 +382,59 @@ function ProfileContent({ user }: { user: User }) {
                   <Icon name="i-chevron" size={16} />
                 </button>
               </div>
+
+              {sessions && sessions.length > 0 && (
+                <>
+                  <div className="card-head" style={{ marginTop: 20 }}>
+                    <div><h2>Signed-in devices</h2><p>{sessions.length} active — this one is among them</p></div>
+                  </div>
+                  <div className="profile-sessions">
+                    {sessions.map((session) => (
+                      <button key={session.id} className="session" type="button" disabled={busy}
+                        title="Sign this device out" onClick={() => endSession(session.id)}>
+                        <i><Icon name="i-logout" size={17} /></i>
+                        <div>
+                          <b>{describeDevice(session.userAgent)}</b>
+                          <span>
+                            Active since {new Date(session.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                            {session.ip ? ` · ${session.ip}` : ''}
+                          </span>
+                        </div>
+                        <Icon name="i-chevron" size={16} />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </motion.section>
+
+            <motion.section className="card profile-card" {...rise(0.28)}>
+              <div className="card-head">
+                <div><h2>Notifications</h2><p>Dashboard notifications are always on</p></div>
+              </div>
+              <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={user.emailNotifications !== false} disabled={busy}
+                  style={{ marginTop: 4 }} onChange={(e) => toggleEmails(e.target.checked)} />
+                <span>
+                  <b style={{ display: 'block' }}>Email me parcel updates</b>
+                  <span className="hint">Picked up, out for delivery, delivered and cancelled. Sign-in and security emails are always sent.</span>
+                </span>
+              </label>
+            </motion.section>
+
+            <motion.form className="card profile-card" onSubmit={deleteAccount} {...rise(0.32)}>
+              <div className="card-head">
+                <div><h2>Delete account</h2><p>You are signed out everywhere and cannot sign in again. Your parcels and their history are kept.</p></div>
+              </div>
+              <div className="profile-fields single">
+                <PasswordInput id="delete-password" label="Your password, to confirm" autoComplete="current-password"
+                  value={deletePassword} onChange={setDeletePassword} />
+              </div>
+              <div className="profile-foot">
+                <span />
+                <button className="btn line" type="submit" disabled={busy || !deletePassword}>Delete my account</button>
+              </div>
+            </motion.form>
           </div>
         </div>
       </div>

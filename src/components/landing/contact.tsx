@@ -13,7 +13,7 @@ const TOPICS = [
 
 type Topic = (typeof TOPICS)[number]['value'];
 
-const EMPTY = { name: '', email: '', topic: 'sending' as Topic, trackingId: '', message: '' };
+const EMPTY = { name: '', email: '', topic: 'sending' as Topic, trackingId: '', message: '', website: '' };
 
 export function Contact() {
   const [form, setForm] = useState(EMPTY);
@@ -33,6 +33,8 @@ export function Contact() {
         // Unknown or empty fields are a 400, so leave it off rather than send ''.
         trackingId: form.trackingId.trim() || undefined,
         message: form.message,
+        // Empty for a person; the server quietly drops a submission with it set.
+        website: form.website || undefined,
       });
       setSent(true);
     } catch (err) {
@@ -107,6 +109,14 @@ export function Contact() {
             <label htmlFor="c-msg">Message</label>
             <textarea className="input" id="c-msg" placeholder="How can we help?" required minLength={10} maxLength={2000}
               value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+          </div>
+
+          {/* A trap for form-filling bots: off-screen, out of the tab order and
+              hidden from assistive tech, so a person never fills it in. */}
+          <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', width: 1, height: 1, overflow: 'hidden' }}>
+            <label htmlFor="c-website">Website</label>
+            <input id="c-website" name="website" type="text" tabIndex={-1} autoComplete="off"
+              value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} />
           </div>
 
           {error && <p className="form-error" role="alert">{error}</p>}

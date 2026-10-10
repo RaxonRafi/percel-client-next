@@ -42,7 +42,7 @@ function NotificationRow({ item }: { item: AppNotification }) {
 }
 
 export function NotificationBell() {
-  const { notifications, unread, connected, markAllRead, clear } = useNotifications();
+  const { notifications, unread, connected, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -91,33 +91,31 @@ export function NotificationBell() {
             <div className="flex items-center gap-2">
               <h2 className="font-display text-sm font-semibold text-ink">Notifications</h2>
               <span
-                title={connected ? 'Live updates on' : 'Live updates unavailable'}
+                title={connected ? 'Live updates on' : 'Checked every minute'}
                 className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-surface-3'}`}
               />
             </div>
-            {notifications.length > 0 && (
+            {unread > 0 && (
               <button
                 type="button"
-                onClick={clear}
+                onClick={markAllRead}
                 className="text-xs font-medium text-ink-3 transition-colors hover:text-ink"
               >
-                Clear all
+                Mark all read
               </button>
             )}
           </div>
 
           {notifications.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-ink-3">
-              {connected
-                ? 'Nothing new. Parcel updates will appear here as they happen.'
-                : 'Live updates are not connected right now.'}
+              Nothing yet. Parcel updates will appear here{connected ? ' as they happen' : ''}.
             </p>
           ) : (
             <ul className="max-h-96 divide-y divide-surface-2 overflow-y-auto">
               {notifications.map((item) => (
                 <li key={item.id}>
                   <Link
-                    href={`/track/${encodeURIComponent(item.trackingId)}`}
+                    href={item.trackingId ? `/track/${encodeURIComponent(item.trackingId)}` : '/dashboard'}
                     onClick={toggle}
                     className={`flex gap-3 px-4 py-3 transition-colors hover:bg-surface ${item.read ? '' : 'bg-accent-bg/50'}`}
                   >

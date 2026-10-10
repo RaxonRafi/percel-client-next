@@ -32,6 +32,8 @@ export default function ParcelsPage() {
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [couriers, setCouriers] = useState<User[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Lists no longer carry the timeline, so the open row fetches its own.
+  const [details, setDetails] = useState<Record<string, Parcel>>({});
   const [statusDraft, setStatusDraft] = useState<Record<string, { status: ParcelStatus; note: string }>>({});
   const [assignDraft, setAssignDraft] = useState<Record<string, string>>({});
   const [proofFor, setProofFor] = useState<Parcel | null>(null);
@@ -91,6 +93,24 @@ export default function ParcelsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // `parcels` is a dependency so the timeline refreshes after every reload.
+  const expandedTracking = parcels.find((p) => p.id === expanded)?.trackingId;
+  useEffect(() => {
+    if (!expanded || !expandedTracking) return;
+    let cancelled = false;
+    api
+      .getParcelDetails(expandedTracking)
+      .then((full) => {
+        if (!cancelled) setDetails((prev) => ({ ...prev, [full.id]: full }));
+      })
+      .catch(() => {
+        // The row still shows everything the list returned.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [expanded, expandedTracking, parcels]);
 
   function applyFilter(next: Partial<typeof filters>) {
     setFilters({ ...filters, ...next });
@@ -232,7 +252,14 @@ export default function ParcelsPage() {
                                   : 'Not assigned yet'}
                               </p>
                               <p>
-                                <span className="text-ink-3 uppercase tracking-wider">Details:</span> {p.weightKg} kg · Fee {formatMoney(p.deliveryFee)} ·{' '}
+                                <span className="text-ink-3 uppercase tracking-wider">Details:</span> {p.weightKg} kg · Fee {formatMoney(p.deliveryFee)}
+                                {p.feeBreakdown && (
+                                  <span className="text-ink-3">
+                                    {' '}({formatMoney(p.feeBreakdown.baseFee)} base
+                                    {p.feeBreakdown.weightFee > 0 ? ` + ${formatMoney(p.feeBreakdown.weightFee)} weight` : ''}
+                                    {p.feeBreakdown.codFee > 0 ? ` + ${formatMoney(p.feeBreakdown.codFee)} COD handling` : ''})
+                                  </span>
+                                )} ·{' '}
                                 {p.codAmount > 0
                                   ? <span className="text-emerald-600 font-bold">COD {formatMoney(p.codAmount)}{p.isCodCollected ? ' (Collected)' : ' (Outstanding)'}</span>
                                   : 'Prepaid'}
@@ -263,14 +290,15 @@ export default function ParcelsPage() {
                               
                               <div className="mt-3 pt-2 border-t border-surface-3">
                                 <p className="font-bold text-ink-2 uppercase tracking-wider mb-2 text-[10px]">Status History</p>
-                                {(p.statusLogs ?? []).map((log) => (
+                                {!details[p.id] && <p className="text-ink-3 italic">Loading history…</p>}
+                                {(details[p.id]?.statusLogs ?? []).map((log) => (
                                   <p key={log.id} className="mb-1 text-ink-2">
                                     <span className="text-ink-3">{formatDate(log.createdAt).split(',')[0]}</span> — <span className="text-accent">{formatStatus(log.status)}</span>
                                     {log.changedBy ? ` by ${log.changedBy.name}` : ''}
                                     {log.note ? ` (${log.note})` : ''}
                                   </p>
                                 ))}
-                                {(p.statusLogs ?? []).length === 0 && <p className="text-ink-3 italic">No status history.</p>}
+                                {details[p.id] && (details[p.id].statusLogs ?? []).length === 0 && <p className="text-ink-3 italic">No status history.</p>}
                               </div>
                               
                               {user?.role === 'ADMIN' && (
@@ -349,8 +377,8 @@ export default function ParcelsPage() {
                         
                         <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex flex-col items-end gap-2">
-                            {/* After pickup only an admin can cancel, through the status route. */}
-                            {user?.role === 'SENDER' && p.sender?.id === user.id && p.status === 'PENDING' && !p.isBlocked && (
+                            {/* Whoever booked it may cancel while it is PENDING. After pickup only an admin can, through the status route. */}
+                            {(user?.role === 'SENDER' || user?.role === 'ADMIN') && p.sender?.id === user.id && p.status === 'PENDING' && !p.isBlocked && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -479,10 +507,14 @@ export default function ParcelsPage() {
                     <option value={managed.status}>{formatStatus(managed.status)}</option>
                     {allowedTransitions(managed.status).map((s) => {
                       // Cash on delivery closes through delivery proof, never from here.
-                      const locked = s === 'DELIVERED' && needsProof(managed);
+                      const needsCash = s === 'DELIVERED' && needsProof(managed);
+                      // The API refuses a pickup while nobody is answerable for the parcel.
+                      const needsCourier = s === 'PICKED_UP' && !managed.deliveryPersonnel;
                       return (
-                        <option key={s} value={s} disabled={locked}>
-                          {formatStatus(s)}{locked ? ' (record delivery proof to collect cash)' : ''}
+                        <option key={s} value={s} disabled={needsCash || needsCourier}>
+                          {formatStatus(s)}
+                          {needsCash ? ' (record delivery proof to collect cash)' : ''}
+                          {needsCourier ? ' (assign a courier first)' : ''}
                         </option>
                       );
                     })}

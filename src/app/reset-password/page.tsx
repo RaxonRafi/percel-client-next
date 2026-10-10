@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
+import { PASSWORD_RULES, passwordProblem } from '@/lib/password';
 import { AuthShell, PasswordField, SubmitButton } from '@/components/auth/auth-shell';
 import { Icon } from '@/components/icon-sprite';
 
@@ -24,6 +25,10 @@ function ResetForm() {
     setError('');
     if (passwords.next !== passwords.confirm) {
       setError('The two passwords do not match');
+      return;
+    }
+    if (passwordProblem(passwords.next)) {
+      setError(PASSWORD_RULES);
       return;
     }
     setLoading(true);

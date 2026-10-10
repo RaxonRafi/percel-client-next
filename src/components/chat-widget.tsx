@@ -36,6 +36,9 @@ const WELCOME: Message = {
     "Hi! I'm Copilot 👋 Ask me about shipping policies, tracking, or claims.",
 };
 
+/** The API accepts at most this many earlier turns with a question. */
+const MAX_HISTORY_TURNS = 10;
+
 /** The sign-in and account-recovery screens stay free of distractions. */
 const HIDDEN_ON = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
 
@@ -134,6 +137,14 @@ export function ChatWidget() {
   const handleSend = async (text: string) => {
     if (!text.trim() || isLoading || !signedIn || unavailable) return;
 
+    // The server keeps no chat state, so "and when will it arrive?" only
+    // makes sense if the conversation rides along. The canned greeting and
+    // anything that never got an answer are left out.
+    const history = messages
+      .filter((m) => m.id !== WELCOME.id && m.content.trim())
+      .slice(-MAX_HISTORY_TURNS)
+      .map((m) => ({ role: m.role, content: m.content.slice(0, 2000) }));
+
     const assistantId = crypto.randomUUID();
     setMessages((prev) => [
       ...prev,
@@ -156,7 +167,11 @@ export function ChatWidget() {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ question: text.trim(), filter: 'parcel' }),
+          body: JSON.stringify({
+            question: text.trim(),
+            filter: 'parcel',
+            ...(history.length ? { history } : {}),
+          }),
         });
 
       let res = await ask(getAccessToken());

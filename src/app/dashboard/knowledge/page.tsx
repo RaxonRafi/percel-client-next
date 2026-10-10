@@ -18,10 +18,17 @@ export default function KnowledgePage() {
   const [parcelId, setParcelId] = useState('');
   const [removeId, setRemoveId] = useState('');
   const [health, setHealth] = useState('');
+  const [assistantOn, setAssistantOn] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    api.health().then(setHealth).catch(() => setHealth('unreachable'));
+    api
+      .getHealth()
+      .then((report) => {
+        setHealth(report.status === 'ok' ? 'online' : 'database down');
+        setAssistantOn(report.assistant);
+      })
+      .catch(() => setHealth('unreachable'));
   }, []);
 
   async function run(action: () => Promise<{ message?: string } | void>, fallback: string) {
@@ -49,7 +56,9 @@ export default function KnowledgePage() {
   // downloads every parcel just to post it back.
   async function indexAll() {
     const res = await api.reindexAllParcels();
-    return { message: res.indexed > 0 ? res.message : 'No parcels to index' };
+    return {
+      message: res.indexed > 0 || res.removed > 0 ? res.message : 'No parcels to index',
+    };
   }
 
   async function uploadPdf(e: React.FormEvent) {
@@ -99,11 +108,16 @@ export default function KnowledgePage() {
         </div>
         
         <div className="flex items-center gap-2 bg-white border border-surface-3 rounded-md px-3 py-1.5">
-          <Activity className={`h-4 w-4 ${health === 'unreachable' ? 'text-rose-600' : 'text-emerald-600'}`} />
+          <Activity className={`h-4 w-4 ${health && health !== 'online' ? 'text-rose-600' : 'text-emerald-600'}`} />
           <span className="text-[10px] tracking-wider text-ink-2 uppercase">API Status:</span>
-          <span className={`text-[10px] font-bold tracking-wider uppercase ${health === 'unreachable' ? 'text-rose-600' : 'text-emerald-600'}`}>
+          <span className={`text-[10px] font-bold tracking-wider uppercase ${health && health !== 'online' ? 'text-rose-600' : 'text-emerald-600'}`}>
             {health || 'CHECKING...'}
           </span>
+          {assistantOn !== null && (
+            <span className={`text-[10px] font-bold tracking-wider uppercase ${assistantOn ? 'text-emerald-600' : 'text-amber-600'}`}>
+              · Assistant {assistantOn ? 'on' : 'off'}
+            </span>
+          )}
         </div>
       </div>
 

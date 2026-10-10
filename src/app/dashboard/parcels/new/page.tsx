@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
-import type { User } from '@/lib/types';
+import { formatMoney } from '@/lib/parcel-utils';
+import type { FeeBreakdown, User } from '@/lib/types';
 
 const EMPTY_FORM = {
   receiverId: '',
@@ -31,9 +32,38 @@ export default function NewParcelPage() {
   const [receivers, setReceivers] = useState<User[]>([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
+  const [quote, setQuote] = useState<FeeBreakdown | null>(null);
 
   const role = user?.role;
   const canCreate = role === 'SENDER' || role === 'ADMIN';
+
+  // The fee is priced by the server; this asks it rather than re-implementing
+  // the rates here. Debounced so typing a weight is one request, not five.
+  const weightKg = Number(form.weightKg);
+  const codAmount = form.codAmount ? Number(form.codAmount) : 0;
+  const priceable = weightKg > 0 && codAmount >= 0;
+
+  useEffect(() => {
+    if (!priceable) return;
+
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      api
+        .quoteParcel({ weightKg, codAmount })
+        .then((fee) => {
+          if (!cancelled) setQuote(fee);
+        })
+        .catch(() => {
+          // No preview is not a reason to block the booking.
+          if (!cancelled) setQuote(null);
+        });
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [priceable, weightKg, codAmount]);
 
   // Only admins may list users; senders type the receiver's email or ID instead.
   useEffect(() => {
@@ -90,7 +120,7 @@ export default function NewParcelPage() {
           New shipment
         </h1>
         <p className="mt-1 text-[13px] text-ink-3">
-          Enter the receiver and route. The delivery fee is calculated when the parcel is created.
+          Enter the receiver and route. The delivery fee updates as you set the weight.
         </p>
       </div>
 
@@ -219,9 +249,19 @@ export default function NewParcelPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-surface-3 px-6 py-4">
-            <p className="max-w-sm text-xs leading-relaxed text-ink-3">
-              A receiver without an account is emailed a link to claim one.
-            </p>
+            <div className="max-w-sm text-xs leading-relaxed text-ink-3">
+              {priceable && quote && (
+                <p className="mb-1 text-sm text-ink" aria-live="polite">
+                  Delivery fee <strong>{formatMoney(quote.total)}</strong>
+                  <span className="text-xs text-ink-3">
+                    {' '}— {formatMoney(quote.baseFee)} base
+                    {quote.weightFee > 0 ? ` + ${formatMoney(quote.weightFee)} weight` : ''}
+                    {quote.codFee > 0 ? ` + ${formatMoney(quote.codFee)} COD handling` : ''}
+                  </span>
+                </p>
+              )}
+              <p>A receiver without an account is emailed a link to claim one.</p>
+            </div>
             <div className="flex gap-3">
               <Button asChild variant="secondary">
                 <Link href="/dashboard/parcels">Cancel</Link>
