@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DeliveryProofForm } from '@/components/delivery-proof-form';
+import { FailedAttemptForm } from '@/components/failed-attempt-form';
+import { ParcelEditDialog } from '@/components/parcel-edit-dialog';
 import { api, ApiError } from '@/lib/api';
+import { openFile } from '@/lib/download';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -17,9 +20,14 @@ import {
   type User,
 } from '@/lib/types';
 import {
-  allowedTransitions, formatDate, formatMoney, formatStatus, isTerminal, needsProof,
+  PAYMENT_LABELS, ROUTE_LABELS, allowedTransitions, canRecordFailure, failureLabel, formatDate,
+  formatDay, formatMoney, formatStatus, fromLocalInput, isTerminal, needsProof, routeFor,
+  statusTone, zoneLabel,
 } from '@/lib/parcel-utils';
-import { Package, Plus, Search, ChevronRight, ChevronDown, Settings2 } from 'lucide-react';
+import {
+  Package, Plus, Search, ChevronRight, ChevronDown, Settings2, FileText, Tag, CreditCard,
+  Pencil, CalendarClock, KeyRound, FileSpreadsheet,
+} from 'lucide-react';
 
 const modalField =
   'h-10 rounded-lg border border-surface-3 bg-white px-3 text-sm text-ink focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none placeholder:text-ink-3 disabled:bg-surface disabled:text-ink-3';
@@ -37,6 +45,10 @@ export default function ParcelsPage() {
   const [statusDraft, setStatusDraft] = useState<Record<string, { status: ParcelStatus; note: string }>>({});
   const [assignDraft, setAssignDraft] = useState<Record<string, string>>({});
   const [proofFor, setProofFor] = useState<Parcel | null>(null);
+  const [failureFor, setFailureFor] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Parcel | null>(null);
+  const [rescheduling, setRescheduling] = useState<Parcel | null>(null);
+  const [rescheduleAt, setRescheduleAt] = useState('');
   const [manageId, setManageId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -131,6 +143,30 @@ export default function ParcelsPage() {
     }
   }
 
+  /** Opens a PDF in a new tab; the tab is opened inside the click. */
+  async function openPdf(kind: 'label' | 'invoice', p: Parcel) {
+    try {
+      await openFile(
+        () => (kind === 'label' ? api.getLabelPdf(p.trackingId) : api.getInvoicePdf(p.trackingId)),
+        `${kind}-${p.trackingId}.pdf`,
+      );
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : `Could not open the ${kind}`);
+    }
+  }
+
+  /** Hands the browser to the gateway; it comes back to /payments/result. */
+  async function payOnline(p: Parcel) {
+    setBusy(true);
+    try {
+      const session = await api.checkoutParcel(p.trackingId);
+      window.location.assign(session.gatewayUrl);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not start the payment');
+      setBusy(false);
+    }
+  }
+
   const canCreate = user?.role === 'SENDER' || user?.role === 'ADMIN';
   // Looked up from the list so the dialog reflects each reload.
   const managed = parcels.find((p) => p.id === manageId) ?? null;
@@ -181,11 +217,18 @@ export default function ParcelsPage() {
           </div>
 
           {canCreate && (
-            <Button asChild>
-              <Link href="/dashboard/parcels/new">
-                <Plus className="h-4 w-4" /> New shipment
-              </Link>
-            </Button>
+            <>
+              <Button asChild variant="secondary">
+                <Link href="/dashboard/parcels/bulk">
+                  <FileSpreadsheet className="h-4 w-4" /> Bulk upload
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/dashboard/parcels/new">
+                  <Plus className="h-4 w-4" /> New shipment
+                </Link>
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -257,13 +300,50 @@ export default function ParcelsPage() {
                                   <span className="text-ink-3">
                                     {' '}({formatMoney(p.feeBreakdown.baseFee)} base
                                     {p.feeBreakdown.weightFee > 0 ? ` + ${formatMoney(p.feeBreakdown.weightFee)} weight` : ''}
-                                    {p.feeBreakdown.codFee > 0 ? ` + ${formatMoney(p.feeBreakdown.codFee)} COD handling` : ''})
+                                    {p.feeBreakdown.codFee > 0 ? ` + ${formatMoney(p.feeBreakdown.codFee)} COD handling` : ''}
+                                    {(p.feeBreakdown.expressFee ?? 0) > 0 ? ` + ${formatMoney(p.feeBreakdown.expressFee ?? 0)} express` : ''})
                                   </span>
                                 )} ·{' '}
                                 {p.codAmount > 0
                                   ? <span className="text-emerald-600 font-bold">COD {formatMoney(p.codAmount)}{p.isCodCollected ? ' (Collected)' : ' (Outstanding)'}</span>
-                                  : 'Prepaid'}
+                                  : <span className={p.paymentStatus === 'PAID' ? 'text-emerald-600 font-bold' : ''}>{PAYMENT_LABELS[p.paymentStatus]}</span>}
+                                {p.returnFee ? ` · Return fee ${formatMoney(p.returnFee)}` : ''}
                               </p>
+                              <p>
+                                <span className="text-ink-3 uppercase tracking-wider">Route:</span>{' '}
+                                {ROUTE_LABELS[routeFor(p.pickupZone, p.deliveryZone)]} ({zoneLabel(p.pickupZone)} → {zoneLabel(p.deliveryZone)}) ·{' '}
+                                {p.serviceTier === 'EXPRESS' ? <span className="text-amber-600 font-bold">Express</span> : 'Standard'}
+                              </p>
+                              {p.pickupWindowStart && p.pickupWindowEnd && (
+                                <p>
+                                  <span className="text-ink-3 uppercase tracking-wider">Pickup slot:</span>{' '}
+                                  {formatDate(p.pickupWindowStart)} – {formatDate(p.pickupWindowEnd).split(', ').pop()}
+                                </p>
+                              )}
+                              {p.estimatedDeliveryAt && !isTerminal(p.status) && (
+                                <p>
+                                  <span className="text-ink-3 uppercase tracking-wider">Expected:</span> {formatDay(p.estimatedDeliveryAt)}
+                                </p>
+                              )}
+                              {p.deliveryAttempts > 0 && (
+                                <p className="text-amber-700">
+                                  <span className="text-ink-3 uppercase tracking-wider">Attempts:</span> {p.deliveryAttempts} failed
+                                  {p.lastFailureReason ? ` — last: ${failureLabel(p.lastFailureReason).toLowerCase()}` : ''}
+                                  {p.rescheduledFor ? ` · next try ${formatDay(p.rescheduledFor)}` : ''}
+                                </p>
+                              )}
+                              {(p.sender?.id === user?.id || p.deliveryPersonnel?.id === user?.id || user?.role === 'ADMIN') && (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                  <Button size="sm" variant="secondary" onClick={() => openPdf('label', p)}>
+                                    <Tag className="h-3.5 w-3.5" /> Label
+                                  </Button>
+                                  {(p.sender?.id === user?.id || user?.role === 'ADMIN') && (
+                                    <Button size="sm" variant="secondary" onClick={() => openPdf('invoice', p)}>
+                                      <FileText className="h-3.5 w-3.5" /> Invoice
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                               {p.deliveredAt && (
                                 <p>
                                   <span className="text-ink-3 uppercase tracking-wider">Delivered:</span> {formatDate(p.deliveredAt)}
