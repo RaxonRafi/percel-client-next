@@ -4,14 +4,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { DeliveryProofForm } from '@/components/delivery-proof-form';
+import { FailedAttemptForm } from '@/components/failed-attempt-form';
 import { api, ApiError } from '@/lib/api';
+import { openFile } from '@/lib/download';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
 import type { PageMeta, Parcel, ParcelStatus } from '@/lib/types';
 import {
-  allowedTransitions, formatDate, formatMoney, formatStatus, isTerminal,
+  allowedTransitions, canRecordFailure, failureLabel, formatDate, formatDay, formatMoney,
+  formatStatus, isTerminal, statusTone,
 } from '@/lib/parcel-utils';
-import { Truck, CheckCircle, Package, MapPin, Search } from 'lucide-react';
+import { Truck, CheckCircle, Package, MapPin, Tag } from 'lucide-react';
 
 export default function DeliveriesPage() {
   const { user } = useAuth();
@@ -20,6 +23,7 @@ export default function DeliveriesPage() {
   const [completed, setCompleted] = useState<Parcel[]>([]);
   const [drafts, setDrafts] = useState<Record<string, { status: ParcelStatus; note: string }>>({});
   const [proofFor, setProofFor] = useState<Parcel | null>(null);
+  const [failureFor, setFailureFor] = useState<string | null>(null);
   const [queueMeta, setQueueMeta] = useState<PageMeta | null>(null);
   const [doneMeta, setDoneMeta] = useState<PageMeta | null>(null);
   const [queuePage, setQueuePage] = useState(1);
@@ -59,6 +63,14 @@ export default function DeliveriesPage() {
       toast.error(err instanceof ApiError ? err.message : 'Could not update status');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function openLabel(parcel: Parcel) {
+    try {
+      await openFile(() => api.getLabelPdf(parcel.trackingId), `label-${parcel.trackingId}.pdf`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not open the label');
     }
   }
 
@@ -122,12 +134,17 @@ export default function DeliveriesPage() {
                         <p className="text-[11px] text-ink-3 mt-0.5">UPDATED {formatDate(p.updatedAt).toUpperCase()}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                          ['PENDING', 'ACCEPTED'].includes(p.status) ? 'bg-surface-2 text-ink-2 border-surface-3' :
-                          'bg-accent-bg text-accent border-accent/20'
-                        }`}>
+                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${statusTone(p.status)}`}>
                           {formatStatus(p.status)}
                         </span>
+                        {p.serviceTier === 'EXPRESS' && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">Express</span>
+                        )}
+                        {p.deliveryAttempts > 0 && (
+                          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            {p.deliveryAttempts} failed attempt{p.deliveryAttempts === 1 ? '' : 's'}
+                          </span>
+                        )}
                         {p.isBlocked && (
                           <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">On hold</span>
                         )}
@@ -152,6 +169,18 @@ export default function DeliveriesPage() {
                         </p>
                       </div>
                     </div>
+
+                    {(p.status === 'FAILED_ATTEMPT' || p.status === 'RETURNING') && (
+                      <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-2 text-[12px] text-amber-800">
+                        {p.status === 'RETURNING'
+                          ? 'Take this parcel back to its sender, then mark it Returned To Sender.'
+                          : <>
+                              Last try: {p.lastFailureReason ? failureLabel(p.lastFailureReason).toLowerCase() : 'failed'}.
+                              {p.rescheduledFor ? ` Receiver asked for ${formatDay(p.rescheduledFor)}.` : ''}{' '}
+                              Set it Out For Delivery to try again, or Returning to send it back.
+                            </>}
+                      </p>
+                    )}
 
                     {p.description && (
                       <p className="mb-4 text-[12px] text-ink-2 bg-surface p-2 rounded-md border-l-2 border-surface-3">
@@ -216,12 +245,43 @@ export default function DeliveriesPage() {
                         <Button
                           size="sm"
                           disabled={busy || p.isBlocked}
-                          onClick={() => setProofFor(proofFor?.id === p.id ? null : p)}
+                          onClick={() => {
+                            setFailureFor(null);
+                            setProofFor(proofFor?.id === p.id ? null : p);
+                          }}
                         >
                           Complete Delivery
                         </Button>
                       )}
+                      {canRecordFailure(p.status) && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="text-amber-700"
+                          disabled={busy || p.isBlocked}
+                          onClick={() => {
+                            setProofFor(null);
+                            setFailureFor(failureFor === p.id ? null : p.id);
+                          }}
+                        >
+                          Delivery failed
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" onClick={() => openLabel(p)} title="Print the shipping label">
+                        <Tag className="h-3.5 w-3.5" /> Label
+                      </Button>
                     </div>
+
+                    {failureFor === p.id && !p.isBlocked && (
+                      <FailedAttemptForm
+                        parcel={p}
+                        onCancel={() => setFailureFor(null)}
+                        onDone={async () => {
+                          setFailureFor(null);
+                          await load();
+                        }}
+                      />
+                    )}
 
                     {p.isBlocked && (
                       <p className="mt-3 text-[12px] text-rose-600">

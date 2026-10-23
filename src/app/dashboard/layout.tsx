@@ -33,6 +33,14 @@ const SECTIONS: { label: string; items: NavItem[] }[] = [
         icon: 'i-truck',
         roles: ['DELIVERY_PERSONNEL'],
       },
+      // Senders see what they are owed, couriers the cash they hold, and
+      // admins settle both.
+      {
+        label: 'Payments',
+        href: '/dashboard/payments',
+        icon: 'i-chart',
+        roles: ['SENDER', 'DELIVERY_PERSONNEL', 'ADMIN'],
+      },
     ],
   },
   {
@@ -55,6 +63,8 @@ const TITLES: Record<string, string> = {
   '/dashboard': 'Overview',
   '/dashboard/parcels': 'Shipments',
   '/dashboard/parcels/new': 'New shipment',
+  '/dashboard/parcels/bulk': 'Bulk booking',
+  '/dashboard/payments': 'Payments',
   '/dashboard/deliveries': 'My deliveries',
   '/dashboard/users': 'Customers',
   '/dashboard/users/new': 'New account',
