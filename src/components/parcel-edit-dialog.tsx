@@ -125,7 +125,7 @@ export function ParcelEditDialog({
               <input id="e-weight" type="number" min="0.1" step="0.1" className={field} value={form.weightKg} onChange={(e) => set('weightKg', e.target.value)} required />
             </div>
             <div>
-              <label className={label} htmlFor="e-cod">Cash to collect (৳)</label>
+              <label className={label} htmlFor="e-cod">Cash to collect (BDT)</label>
               <input id="e-cod" type="number" min="0" step="1" className={field} value={form.codAmount} onChange={(e) => set('codAmount', e.target.value)} />
             </div>
             <div>

@@ -318,7 +318,7 @@ export default function NewParcelPage() {
               />
             </div>
             <div>
-              <label className={label} htmlFor="codAmount">Cash to collect (৳)</label>
+              <label className={label} htmlFor="codAmount">Cash to collect (BDT)</label>
               <input
                 id="codAmount"
                 type="number"
