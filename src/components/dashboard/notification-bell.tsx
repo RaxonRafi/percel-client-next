@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  IconBan, IconBell, IconPackage, IconTruckDelivery, IconUserCheck, IconX,
+  IconBan, IconBell, IconCalendarTime, IconPackage, IconPencil, IconTruckDelivery, IconUserCheck, IconX,
 } from '@tabler/icons-react';
 import { useNotifications, type AppNotification } from '@/lib/notifications-context';
 import type { RealtimeNotification } from '@/lib/types';
@@ -15,6 +15,8 @@ const ICONS: Record<RealtimeNotification['type'], React.ElementType> = {
   'parcel.unassigned': IconUserCheck,
   'parcel.blocked': IconBan,
   'parcel.unblocked': IconPackage,
+  'parcel.updated': IconPencil,
+  'parcel.rescheduled': IconCalendarTime,
 };
 
 function timeAgo(iso: string): string {
