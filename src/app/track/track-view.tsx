@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MotionConfig, motion } from 'motion/react';
 import { api } from '@/lib/api';
-import { formatDate, formatStatus } from '@/lib/parcel-utils';
+import { formatDate, formatDay, formatStatus } from '@/lib/parcel-utils';
 import { EASE, createMotionScope, motionEnabled, stagger } from '@/lib/motion';
 import type { ParcelStatus, PublicParcel } from '@/lib/types';
 import { useCached } from '@/lib/use-cached';
@@ -13,7 +13,7 @@ import { Icon } from '@/components/icon-sprite';
 import { MotionReveal } from '@/components/motion-reveal';
 import { SiteNav } from '@/components/site-nav';
 
-/** The happy path, in order. `CANCELLED` sits outside it. */
+/** The happy path, in order. Cancelled and returned parcels sit outside it. */
 const STEPS: { status: ParcelStatus; label: string; icon: string }[] = [
   { status: 'PENDING', label: 'Booked', icon: 'i-check' },
   { status: 'PICKED_UP', label: 'Picked up', icon: 'i-box' },
@@ -27,8 +27,11 @@ const LOG_ICONS: Record<ParcelStatus, string> = {
   PICKED_UP: 'i-box',
   IN_TRANSIT: 'i-route',
   OUT_FOR_DELIVERY: 'i-truck',
+  FAILED_ATTEMPT: 'i-alert',
+  RETURNING: 'i-repeat',
   DELIVERED: 'i-check',
   CANCELLED: 'i-alert',
+  RETURNED_TO_SENDER: 'i-back',
 };
 
 const ROUTE = 'M48 132 Q 190 -10 352 62';
@@ -41,8 +44,13 @@ function Result({ parcel }: { parcel: PublicParcel }) {
   const doneRef = useRef<SVGPathElement>(null);
   const courierRef = useRef<SVGGElement>(null);
 
-  const cancelled = parcel.status === 'CANCELLED';
-  const stepIndex = STEPS.findIndex((step) => step.status === parcel.status);
+  // Off the happy path: nothing more will happen on the way to the receiver.
+  const cancelled = ['CANCELLED', 'RETURNING', 'RETURNED_TO_SENDER'].includes(parcel.status);
+  const failed = parcel.status === 'FAILED_ATTEMPT';
+  // A failed attempt is still at the door step, waiting for another try.
+  const stepIndex = failed
+    ? STEPS.findIndex((step) => step.status === 'OUT_FOR_DELIVERY')
+    : STEPS.findIndex((step) => step.status === parcel.status);
   const delivered = parcel.status === 'DELIVERED';
   // How far along the route the courier marker sits (0–1).
   const progress = cancelled ? 0 : Math.max(stepIndex, 0) / (STEPS.length - 1);
@@ -92,6 +100,17 @@ function Result({ parcel }: { parcel: PublicParcel }) {
           <div><b>This parcel is on hold.</b>Contact support for details.</div>
         </div>
       )}
+      {failed && !parcel.isBlocked && (
+        <div className="hold" role="status">
+          <Icon name="i-alert" size={20} />
+          <div>
+            <b>We could not deliver this parcel{parcel.deliveryAttempts > 1 ? ` (${parcel.deliveryAttempts} attempts)` : ''}.</b>
+            {parcel.rescheduledFor
+              ? `Next attempt: ${formatDay(parcel.rescheduledFor)}.`
+              : 'The courier will try again soon. Sign in to pick a day that suits you.'}
+          </div>
+        </div>
+      )}
 
       <motion.div className="t-card summary" {...rise} transition={{ duration: 0.7, ease: EASE }}>
         <div>
@@ -102,11 +121,17 @@ function Result({ parcel }: { parcel: PublicParcel }) {
               <Icon name="i-copy" size={13} /><span>{copied ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
-          <span className={`badge${cancelled || parcel.isBlocked ? ' danger' : ''}`}>
+          <span className={`badge${cancelled || failed || parcel.isBlocked ? ' danger' : ''}`}>
             <span className="pulse" />
             {parcel.isBlocked ? 'On hold' : formatStatus(parcel.status)}
           </span>
           <p className="sum-meta">Last update: {formatDate(parcel.updatedAt)}</p>
+          {parcel.estimatedDeliveryAt && !cancelled && parcel.status !== 'DELIVERED' && (
+            <p className="sum-meta">
+              Expected by <b>{formatDay(parcel.estimatedDeliveryAt)}</b>
+              {parcel.serviceTier === 'EXPRESS' ? ' · Express' : ''}
+            </p>
+          )}
         </div>
 
         <div>
@@ -200,6 +225,13 @@ function Result({ parcel }: { parcel: PublicParcel }) {
                   <dd className="person"><i>{parcel.deliveryPersonnelName[0]}</i>{parcel.deliveryPersonnelName}</dd>
                 </div>
               )}
+              <div><dt>Service</dt><dd>{parcel.serviceTier === 'EXPRESS' ? 'Express' : 'Standard'}</dd></div>
+              {parcel.estimatedDeliveryAt && (
+                <div><dt>Estimated delivery</dt><dd>{formatDay(parcel.estimatedDeliveryAt)}</dd></div>
+              )}
+              {parcel.deliveryAttempts > 0 && (
+                <div><dt>Delivery attempts</dt><dd>{parcel.deliveryAttempts}</dd></div>
+              )}
               {parcel.description && (
                 <div className="full"><dt>Description</dt><dd>{parcel.description}</dd></div>
               )}
@@ -234,7 +266,7 @@ function Skeleton() {
 }
 
 /** Statuses after which a parcel never changes again — no point polling. */
-const TERMINAL: ParcelStatus[] = ['DELIVERED', 'CANCELLED'];
+const TERMINAL: ParcelStatus[] = ['DELIVERED', 'CANCELLED', 'RETURNED_TO_SENDER'];
 const REFRESH_MS = 30_000;
 
 const clock = (at: number) =>

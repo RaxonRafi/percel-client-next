@@ -8,7 +8,16 @@ import {
 } from './auth-storage';
 import type {
   AuthResponse,
+  BulkBookingResult,
   ChatTurn,
+  CheckoutSession,
+  DeliveryFailureReason,
+  DeliveryZone,
+  LedgerBalance,
+  LedgerStatement,
+  Payment,
+  PayoutMethod,
+  ServiceTier,
   ContactMessage,
   DashboardStats,
   FeeBreakdown,
@@ -35,11 +44,34 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    /** The parsed error body, for routes that say more than a message. */
+    public body?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
   }
 }
+
+/** Booking fields shared by create and edit. */
+type BookingFields = {
+  receiverName: string;
+  receiverPhone?: string;
+  pickupAddress: string;
+  deliveryAddress: string;
+  description?: string;
+  /** Drives the fee. The client never sends a price. */
+  weightKg: number;
+  /** Cash to collect on delivery; omit or 0 for prepaid. */
+  codAmount?: number;
+  /** Default DHAKA_CITY at both ends — priced exactly as before zones. */
+  pickupZone?: DeliveryZone;
+  deliveryZone?: DeliveryZone;
+  /** EXPRESS is refused on a route outside Dhaka. */
+  serviceTier?: ServiceTier;
+  /** ISO instants; both or neither, at most 12 hours apart, within 14 days. */
+  pickupWindowStart?: string;
+  pickupWindowEnd?: string;
+};
 
 type QueryValue = string | number | boolean | undefined;
 
@@ -54,6 +86,8 @@ type RequestOptions = {
   skipRefresh?: boolean;
   /** the response is plain text, not JSON */
   text?: boolean;
+  /** the response is a file (a PDF) */
+  blob?: boolean;
 };
 
 /**
@@ -141,6 +175,18 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     if (refreshed) res = await send(refreshed);
   }
 
+  if (options.blob) {
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new ApiError(
+        (data as { message?: string }).message ?? res.statusText,
+        res.status,
+        data,
+      );
+    }
+    return (await res.blob()) as unknown as T;
+  }
+
   if (options.text) {
     const body = await res.text();
     if (!res.ok) throw new ApiError(body || res.statusText, res.status);
@@ -159,7 +205,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
         : res.statusText;
     // The throttler's own body is just "ThrottlerException: Too Many Requests".
     if (res.status === 429) throw new ApiError(rateLimitMessage(res), 429);
-    throw new ApiError(message || 'Request failed', res.status);
+    throw new ApiError(message || 'Request failed', res.status, data);
   }
 
   return data as T;
@@ -360,7 +406,13 @@ export const api = {
     request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/details`),
 
   /** Public. Prices a parcel with the booking calculation; stores nothing. */
-  quoteParcel: (payload: { weightKg?: number; codAmount?: number }) =>
+  quoteParcel: (payload: {
+    weightKg?: number;
+    codAmount?: number;
+    pickupZone?: DeliveryZone;
+    deliveryZone?: DeliveryZone;
+    serviceTier?: ServiceTier;
+  }) =>
     request<FeeBreakdown>('/parcels/quote', {
       method: 'POST',
       body: payload,
@@ -379,20 +431,70 @@ export const api = {
   getDeliveryHistory: (query: ParcelQuery = {}) =>
     request<Paginated<Parcel>>('/parcels/delivery-history', { query: { ...query } }),
 
-  createParcel: (payload: {
-    /** One of the two is required; an unknown email gets a claimable account. */
-    receiverId?: string;
-    receiverEmail?: string;
-    receiverName: string;
-    receiverPhone?: string;
-    pickupAddress: string;
-    deliveryAddress: string;
-    description?: string;
-    /** Drives the fee. The client never sends a price. */
-    weightKg: number;
-    /** Cash to collect on delivery; omit or 0 for prepaid. */
-    codAmount?: number;
-  }) => request<Parcel>('/parcels', { method: 'POST', body: payload }),
+  createParcel: (
+    payload: BookingFields & {
+      /** One of the two is required; an unknown email gets a claimable account. */
+      receiverId?: string;
+      receiverEmail?: string;
+    },
+  ) => request<Parcel>('/parcels', { method: 'POST', body: payload }),
+
+  /**
+   * Sender or admin, while PENDING. Weight, cash, zones and tier re-price the
+   * parcel; a parcel paid online cannot change price (400).
+   */
+  updateParcel: (trackingId: string, payload: Partial<BookingFields>) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}`, {
+      method: 'PATCH',
+      body: payload,
+    }),
+
+  /**
+   * Books every row of a CSV. A file with any invalid row books nothing and
+   * answers 400 with `errors: [{ line, errors }]` on the ApiError body.
+   */
+  bulkCreateParcels: (
+    file: File,
+    defaults: { pickupAddress?: string; pickupZone?: DeliveryZone } = {},
+  ) => {
+    const form = new FormData();
+    form.append('file', file);
+    for (const [key, value] of Object.entries(defaults)) {
+      if (value) form.append(key, value);
+    }
+    return request<BulkBookingResult>('/parcels/bulk', { method: 'POST', body: form });
+  },
+
+  /** Courier (their own parcel) or admin, from OUT_FOR_DELIVERY. */
+  recordFailedAttempt: (
+    trackingId: string,
+    payload: { reason: DeliveryFailureReason; note?: string; rescheduledFor?: string },
+  ) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/failed-attempt`, {
+      method: 'PATCH',
+      body: payload,
+    }),
+
+  /** Receiver, sender or admin, while FAILED_ATTEMPT. */
+  rescheduleDelivery: (trackingId: string, rescheduledFor: string, note?: string) =>
+    request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/reschedule`, {
+      method: 'PATCH',
+      body: note ? { rescheduledFor, note } : { rescheduledFor },
+    }),
+
+  /** Receiver, while OUT_FOR_DELIVERY. Emails a new code; the old one dies. */
+  resendDeliveryCode: (trackingId: string) =>
+    request<MessageResponse>(`/parcels/${encodeURIComponent(trackingId)}/delivery-code`, {
+      method: 'POST',
+    }),
+
+  /** 4x6 PDF — the sender, an admin or the assigned courier. */
+  getLabelPdf: (trackingId: string) =>
+    request<Blob>(`/parcels/${encodeURIComponent(trackingId)}/label`, { blob: true }),
+
+  /** A4 PDF — the sender or an admin. */
+  getInvoicePdf: (trackingId: string) =>
+    request<Blob>(`/parcels/${encodeURIComponent(trackingId)}/invoice`, { blob: true }),
 
   updateParcelStatus: (trackingId: string, status: ParcelStatus, note?: string) =>
     request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/status`, {
@@ -463,12 +565,70 @@ export const api = {
       receivedBy?: string;
       note?: string;
       codCollected: boolean;
+      /** The six digits the receiver was emailed when it went out. */
+      deliveryCode?: string;
     },
   ) =>
     request<Parcel>(`/parcels/${encodeURIComponent(trackingId)}/delivery-proof`, {
       method: 'PATCH',
       body: payload,
     }),
+
+  /* -------------------------------------------------------------- Ledger */
+
+  /** A sender's balance (owed to / by them) or a courier's cash in hand. */
+  getMyLedger: (query: ListQuery = {}) =>
+    request<LedgerStatement>('/ledger/me', { query: { ...query } }),
+
+  getMerchantBalances: (query: ListQuery & { outstandingOnly?: boolean } = {}) =>
+    request<Paginated<LedgerBalance>>('/ledger/merchants', { query: { ...query } }),
+
+  getCourierBalances: (query: ListQuery & { outstandingOnly?: boolean } = {}) =>
+    request<Paginated<LedgerBalance>>('/ledger/couriers', { query: { ...query } }),
+
+  getMerchantStatement: (userId: string, query: ListQuery = {}) =>
+    request<LedgerStatement>(`/ledger/merchants/${encodeURIComponent(userId)}`, {
+      query: { ...query },
+    }),
+
+  getCourierStatement: (userId: string, query: ListQuery = {}) =>
+    request<LedgerStatement>(`/ledger/couriers/${encodeURIComponent(userId)}`, {
+      query: { ...query },
+    }),
+
+  /** Admin. Refused above what the courier holds. */
+  recordCourierDeposit: (
+    userId: string,
+    payload: { amount: number; reference?: string; note?: string },
+  ) =>
+    request<LedgerStatement>(`/ledger/couriers/${encodeURIComponent(userId)}/deposits`, {
+      method: 'POST',
+      body: payload,
+    }),
+
+  /** Admin. Records money already sent; refused above what is owed. */
+  recordMerchantPayout: (
+    userId: string,
+    payload: { amount: number; method: PayoutMethod; reference?: string; note?: string },
+  ) =>
+    request<LedgerStatement>(`/ledger/merchants/${encodeURIComponent(userId)}/payouts`, {
+      method: 'POST',
+      body: payload,
+    }),
+
+  /* ------------------------------------------------------------ Payments */
+
+  /**
+   * Sender, prepaid parcel. Opens an SSLCommerz session; send the browser to
+   * `gatewayUrl`. 503 when online payment is not configured on the server.
+   */
+  checkoutParcel: (trackingId: string) =>
+    request<CheckoutSession>(`/payments/parcels/${encodeURIComponent(trackingId)}/checkout`, {
+      method: 'POST',
+    }),
+
+  getParcelPayments: (trackingId: string) =>
+    request<Payment[]>(`/payments/parcels/${encodeURIComponent(trackingId)}`),
 
   /* ----------------------------------------------------------- Dashboard */
 

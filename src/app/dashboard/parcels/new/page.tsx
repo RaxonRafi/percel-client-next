@@ -3,13 +3,25 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Package } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Package, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api, ApiError } from '@/lib/api';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/auth-context';
-import { formatMoney } from '@/lib/parcel-utils';
-import type { FeeBreakdown, User } from '@/lib/types';
+import {
+  ROUTE_LABELS,
+  formatMoney,
+  fromLocalInput,
+  routeFor,
+  toLocalInput,
+} from '@/lib/parcel-utils';
+import {
+  DELIVERY_ZONES,
+  type DeliveryZone,
+  type FeeBreakdown,
+  type ServiceTier,
+  type User,
+} from '@/lib/types';
 
 const EMPTY_FORM = {
   receiverId: '',
@@ -20,11 +32,25 @@ const EMPTY_FORM = {
   description: '',
   weightKg: '1',
   codAmount: '',
+  pickupZone: 'DHAKA_CITY' as DeliveryZone,
+  deliveryZone: 'DHAKA_CITY' as DeliveryZone,
+  serviceTier: 'STANDARD' as ServiceTier,
+  pickupWindowStart: '',
+  pickupWindowEnd: '',
 };
 
 const field =
   'w-full h-10 rounded-lg border border-surface-3 bg-white px-3 text-sm text-ink focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none placeholder:text-ink-3';
 const label = 'block text-xs font-semibold text-ink-2 mb-1.5';
+
+/** A sensible first slot: from the next whole hour, three hours long. */
+function suggestedWindow(): { start: string; end: string } {
+  const start = new Date();
+  start.setMinutes(0, 0, 0);
+  start.setHours(start.getHours() + 1);
+  const end = new Date(start.getTime() + 3 * 3_600_000);
+  return { start: toLocalInput(start), end: toLocalInput(end) };
+}
 
 export default function NewParcelPage() {
   const router = useRouter();
@@ -33,6 +59,8 @@ export default function NewParcelPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [quote, setQuote] = useState<FeeBreakdown | null>(null);
+  const [quoteError, setQuoteError] = useState('');
+  const [withWindow, setWithWindow] = useState(false);
 
   const role = user?.role;
   const canCreate = role === 'SENDER' || role === 'ADMIN';
@@ -42,6 +70,12 @@ export default function NewParcelPage() {
   const weightKg = Number(form.weightKg);
   const codAmount = form.codAmount ? Number(form.codAmount) : 0;
   const priceable = weightKg > 0 && codAmount >= 0;
+  const route = routeFor(form.pickupZone, form.deliveryZone);
+  // Express is a same-day promise only a Dhaka route can keep; the server
+  // refuses it elsewhere, so the option is withdrawn rather than left to fail.
+  const expressOffered = route !== 'NATIONAL';
+  const serviceTier: ServiceTier = expressOffered ? form.serviceTier : 'STANDARD';
+  const { pickupZone, deliveryZone } = form;
 
   useEffect(() => {
     if (!priceable) return;
@@ -49,13 +83,17 @@ export default function NewParcelPage() {
     let cancelled = false;
     const timer = setTimeout(() => {
       api
-        .quoteParcel({ weightKg, codAmount })
+        .quoteParcel({ weightKg, codAmount, pickupZone, deliveryZone, serviceTier })
         .then((fee) => {
-          if (!cancelled) setQuote(fee);
+          if (cancelled) return;
+          setQuote(fee);
+          setQuoteError('');
         })
-        .catch(() => {
+        .catch((err) => {
           // No preview is not a reason to block the booking.
-          if (!cancelled) setQuote(null);
+          if (cancelled) return;
+          setQuote(null);
+          setQuoteError(err instanceof ApiError ? err.message : '');
         });
     }, 300);
 
@@ -63,7 +101,7 @@ export default function NewParcelPage() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [priceable, weightKg, codAmount]);
+  }, [priceable, weightKg, codAmount, pickupZone, deliveryZone, serviceTier]);
 
   // Only admins may list users; senders type the receiver's email or ID instead.
   useEffect(() => {
@@ -82,6 +120,14 @@ export default function NewParcelPage() {
     };
   }, [role]);
 
+  function toggleWindow(on: boolean) {
+    setWithWindow(on);
+    if (on && !form.pickupWindowStart) {
+      const { start, end } = suggestedWindow();
+      setForm({ ...form, pickupWindowStart: start, pickupWindowEnd: end });
+    }
+  }
+
   async function createParcel(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -97,6 +143,15 @@ export default function NewParcelPage() {
         description: form.description || undefined,
         weightKg: Number(form.weightKg),
         codAmount: form.codAmount ? Number(form.codAmount) : undefined,
+        pickupZone: form.pickupZone,
+        deliveryZone: form.deliveryZone,
+        serviceTier,
+        ...(withWindow
+          ? {
+              pickupWindowStart: fromLocalInput(form.pickupWindowStart),
+              pickupWindowEnd: fromLocalInput(form.pickupWindowEnd),
+            }
+          : {}),
       });
       toast.success(`Shipment ${parcel.trackingId} created`);
       router.push('/dashboard/parcels');
@@ -115,13 +170,24 @@ export default function NewParcelPage() {
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to shipments
         </Link>
-        <h1 className="mt-3 flex items-center gap-2 text-xl font-bold text-ink">
-          <Package className="h-5 w-5 text-accent" />
-          New shipment
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-3">
-          Enter the receiver and route. The delivery fee updates as you set the weight.
-        </p>
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="flex items-center gap-2 text-xl font-bold text-ink">
+              <Package className="h-5 w-5 text-accent" />
+              New shipment
+            </h1>
+            <p className="mt-1 text-[13px] text-ink-3">
+              Enter the receiver and route. The delivery fee updates as you go.
+            </p>
+          </div>
+          {canCreate && (
+            <Button asChild variant="secondary" size="sm">
+              <Link href="/dashboard/parcels/bulk">
+                <FileSpreadsheet className="h-3.5 w-3.5" /> Book many from a CSV
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {!canCreate ? (
@@ -187,9 +253,10 @@ export default function NewParcelPage() {
                 className={field}
                 value={form.receiverPhone}
                 onChange={(e) => setForm({ ...form, receiverPhone: e.target.value })}
-                placeholder="Optional"
+                placeholder="Optional — the courier calls this"
               />
             </div>
+
             <div>
               <label className={label} htmlFor="pickupAddress">Pickup address</label>
               <input
@@ -201,6 +268,19 @@ export default function NewParcelPage() {
               />
             </div>
             <div>
+              <label className={label} htmlFor="pickupZone">Pickup area</label>
+              <select
+                id="pickupZone"
+                className={field}
+                value={form.pickupZone}
+                onChange={(e) => setForm({ ...form, pickupZone: e.target.value as DeliveryZone })}
+              >
+                {DELIVERY_ZONES.map((z) => (
+                  <option key={z.value} value={z.value}>{z.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className={label} htmlFor="deliveryAddress">Delivery address</label>
               <input
                 id="deliveryAddress"
@@ -210,6 +290,20 @@ export default function NewParcelPage() {
                 required
               />
             </div>
+            <div>
+              <label className={label} htmlFor="deliveryZone">Delivery area</label>
+              <select
+                id="deliveryZone"
+                className={field}
+                value={form.deliveryZone}
+                onChange={(e) => setForm({ ...form, deliveryZone: e.target.value as DeliveryZone })}
+              >
+                {DELIVERY_ZONES.map((z) => (
+                  <option key={z.value} value={z.value}>{z.label}</option>
+                ))}
+              </select>
+            </div>
+
             <div>
               <label className={label} htmlFor="weightKg">Weight (kg)</label>
               <input
@@ -224,7 +318,7 @@ export default function NewParcelPage() {
               />
             </div>
             <div>
-              <label className={label} htmlFor="codAmount">COD ($)</label>
+              <label className={label} htmlFor="codAmount">Cash to collect (৳)</label>
               <input
                 id="codAmount"
                 type="number"
@@ -233,9 +327,95 @@ export default function NewParcelPage() {
                 className={field}
                 value={form.codAmount}
                 onChange={(e) => setForm({ ...form, codAmount: e.target.value })}
-                placeholder="0 (Prepaid)"
+                placeholder="0 — prepaid"
               />
             </div>
+
+            <fieldset className="sm:col-span-2">
+              <legend className={label}>Service</legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {(['STANDARD', 'EXPRESS'] as ServiceTier[]).map((tier) => {
+                  const disabled = tier === 'EXPRESS' && !expressOffered;
+                  const selected = serviceTier === tier;
+                  return (
+                    <label
+                      key={tier}
+                      className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${
+                        selected ? 'border-accent bg-accent-bg' : 'border-surface-3 bg-white hover:bg-surface'
+                      } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="serviceTier"
+                        className="mt-1 accent-accent"
+                        checked={selected}
+                        disabled={disabled}
+                        onChange={() => setForm({ ...form, serviceTier: tier })}
+                      />
+                      <span>
+                        <b className="flex items-center gap-1 text-ink">
+                          {tier === 'EXPRESS' && <Zap className="h-3.5 w-3.5 text-amber-500" />}
+                          {tier === 'EXPRESS' ? 'Express' : 'Standard'}
+                        </b>
+                        <span className="text-xs text-ink-3">
+                          {tier === 'EXPRESS'
+                            ? disabled
+                              ? 'Only inside Dhaka and its suburbs'
+                              : 'Same day inside the city, next day to the suburbs'
+                            : route === 'NATIONAL'
+                              ? 'About three days nationwide'
+                              : route === 'SUBURB'
+                                ? 'About two days'
+                                : 'Next day'}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <div className="sm:col-span-2">
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-ink-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-surface-3 accent-accent"
+                  checked={withWindow}
+                  onChange={(e) => toggleWindow(e.target.checked)}
+                />
+                Choose a pickup time
+              </label>
+              {withWindow && (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className={label} htmlFor="pickupWindowStart">From</label>
+                    <input
+                      id="pickupWindowStart"
+                      type="datetime-local"
+                      className={field}
+                      value={form.pickupWindowStart}
+                      onChange={(e) => setForm({ ...form, pickupWindowStart: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className={label} htmlFor="pickupWindowEnd">Until</label>
+                    <input
+                      id="pickupWindowEnd"
+                      type="datetime-local"
+                      className={field}
+                      value={form.pickupWindowEnd}
+                      onChange={(e) => setForm({ ...form, pickupWindowEnd: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <p className="text-[11px] text-ink-3 sm:col-span-2">
+                    Up to 12 hours long, within the next 14 days. The delivery estimate counts from the end of it.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="sm:col-span-2">
               <label className={label} htmlFor="description">Description</label>
               <input
@@ -254,13 +434,20 @@ export default function NewParcelPage() {
                 <p className="mb-1 text-sm text-ink" aria-live="polite">
                   Delivery fee <strong>{formatMoney(quote.total)}</strong>
                   <span className="text-xs text-ink-3">
-                    {' '}— {formatMoney(quote.baseFee)} base
+                    {' '}— {ROUTE_LABELS[quote.route ?? route]}: {formatMoney(quote.baseFee)} base
                     {quote.weightFee > 0 ? ` + ${formatMoney(quote.weightFee)} weight` : ''}
-                    {quote.codFee > 0 ? ` + ${formatMoney(quote.codFee)} COD handling` : ''}
+                    {quote.codFee > 0 ? ` + ${formatMoney(quote.codFee)} cash handling` : ''}
+                    {(quote.expressFee ?? 0) > 0 ? ` + ${formatMoney(quote.expressFee ?? 0)} express` : ''}
                   </span>
                 </p>
               )}
-              <p>A receiver without an account is emailed a link to claim one.</p>
+              {quoteError && <p className="mb-1 text-rose-600">{quoteError}</p>}
+              <p>
+                {codAmount > 0
+                  ? 'The fee comes out of the cash the courier collects.'
+                  : 'Prepaid: pay the fee online from your shipments, or it is taken from your next payout.'}{' '}
+                A receiver without an account is emailed a link to claim one.
+              </p>
             </div>
             <div className="flex gap-3">
               <Button asChild variant="secondary">

@@ -8,6 +8,9 @@
     --st-out: #4a3aa7;
     --st-delivered: #008300;
     --st-cancelled: #e87ba4;
+    --st-failed: #c0392b;
+    --st-returning: #8a6d3b;
+    --st-returned: #6b7280;
     --side-w: 264px;
   }
 

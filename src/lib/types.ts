@@ -12,27 +12,76 @@ export type ParcelStatus =
   | 'PICKED_UP'
   | 'IN_TRANSIT'
   | 'OUT_FOR_DELIVERY'
+  /** The courier reached the door and could not hand it over. */
+  | 'FAILED_ATTEMPT'
+  /** On its way back to the sender. */
+  | 'RETURNING'
   | 'DELIVERED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'RETURNED_TO_SENDER';
 
 export const PARCEL_STATUSES: ParcelStatus[] = [
   'PENDING',
   'PICKED_UP',
   'IN_TRANSIT',
   'OUT_FOR_DELIVERY',
+  'FAILED_ATTEMPT',
+  'RETURNING',
   'DELIVERED',
   'CANCELLED',
+  'RETURNED_TO_SENDER',
 ];
 
 /**
- * A courier may only move a parcel through these four. An admin may set
- * anything; anything else from a courier is a 403.
+ * Statuses a courier may set through the status route. An admin may set
+ * anything; anything else from a courier is a 403. `FAILED_ATTEMPT` is a
+ * courier's to record too, but through its own route — it needs a reason.
  */
 export const COURIER_STATUSES: ParcelStatus[] = [
   'PICKED_UP',
   'IN_TRANSIT',
   'OUT_FOR_DELIVERY',
   'DELIVERED',
+  'RETURNING',
+  'RETURNED_TO_SENDER',
+];
+
+/** Coarse areas the fee is priced by. The sender picks one per address. */
+export type DeliveryZone = 'DHAKA_CITY' | 'DHAKA_SUBURB' | 'OUTSIDE_DHAKA';
+
+export const DELIVERY_ZONES: { value: DeliveryZone; label: string }[] = [
+  { value: 'DHAKA_CITY', label: 'Inside Dhaka city' },
+  { value: 'DHAKA_SUBURB', label: 'Dhaka suburbs' },
+  { value: 'OUTSIDE_DHAKA', label: 'Outside Dhaka' },
+];
+
+/** From the two zones: both in the city, any suburb, or anywhere else. */
+export type RouteType = 'CITY' | 'SUBURB' | 'NATIONAL';
+
+/** EXPRESS is refused (400) on a NATIONAL route. */
+export type ServiceTier = 'STANDARD' | 'EXPRESS';
+
+/**
+ * How the fee is settled. `NOT_REQUIRED` is cash on delivery — the fee comes
+ * out of the cash. A prepaid parcel is `UNPAID` until paid online.
+ */
+export type PaymentStatus = 'NOT_REQUIRED' | 'UNPAID' | 'PAID';
+
+export type DeliveryFailureReason =
+  | 'RECEIVER_UNAVAILABLE'
+  | 'RECEIVER_UNREACHABLE'
+  | 'WRONG_ADDRESS'
+  | 'REFUSED'
+  | 'RESCHEDULE_REQUESTED'
+  | 'OTHER';
+
+export const FAILURE_REASONS: { value: DeliveryFailureReason; label: string }[] = [
+  { value: 'RECEIVER_UNAVAILABLE', label: 'Receiver not available' },
+  { value: 'RECEIVER_UNREACHABLE', label: 'Receiver not answering the phone' },
+  { value: 'WRONG_ADDRESS', label: 'Address could not be found' },
+  { value: 'REFUSED', label: 'Receiver refused the parcel' },
+  { value: 'RESCHEDULE_REQUESTED', label: 'Receiver asked for another day' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 /** Every list route returns this envelope now, never a bare array. */
@@ -129,11 +178,17 @@ export interface Health {
   realtime: boolean;
 }
 
-/** How a delivery fee is made up. `total` is what the sender pays. */
+/**
+ * How a delivery fee is made up. `total` is what the sender pays. `route`,
+ * `serviceTier` and `expressFee` are missing on parcels booked before zones.
+ */
 export interface FeeBreakdown {
+  route?: RouteType;
+  serviceTier?: ServiceTier;
   baseFee: number;
   weightFee: number;
   codFee: number;
+  expressFee?: number;
   total: number;
 }
 
@@ -180,6 +235,20 @@ export interface Parcel {
   /** Who actually took the parcel, when that differs from the receiver. */
   receivedBy: string | null;
   deliveredAt: string | null;
+  paymentStatus: PaymentStatus;
+  /** Charged once the parcel is RETURNED_TO_SENDER. */
+  returnFee: number | null;
+  pickupZone: DeliveryZone;
+  deliveryZone: DeliveryZone;
+  serviceTier: ServiceTier;
+  pickupWindowStart: string | null;
+  pickupWindowEnd: string | null;
+  /** Null on parcels booked before estimates existed. */
+  estimatedDeliveryAt: string | null;
+  /** Failed attempts so far; the server allows 3 by default. */
+  deliveryAttempts: number;
+  lastFailureReason: DeliveryFailureReason | null;
+  rescheduledFor: string | null;
   sender: User;
   receiver: User;
   /** The assigned courier, or null while the parcel is unassigned. */
@@ -210,6 +279,10 @@ export interface PublicParcel {
   deliveryAddress: string;
   description: string | null;
   deliveryPersonnelName: string | null;
+  serviceTier: ServiceTier;
+  estimatedDeliveryAt: string | null;
+  deliveryAttempts: number;
+  rescheduledFor: string | null;
   statusLogs: PublicParcelStatusLog[];
   createdAt: string;
   updatedAt: string;
@@ -273,6 +346,14 @@ export const AUDIT_LOG_ACTIONS = [
   'PARCEL_UNBLOCKED',
   'PARCEL_ASSIGNED',
   'PARCEL_UNASSIGNED',
+  'PARCEL_UPDATED',
+  'PARCEL_DELIVERY_FAILED',
+  'PARCEL_RESCHEDULED',
+  'PARCEL_BULK_BOOKED',
+  'DELIVERY_CODE_REISSUED',
+  'PAYMENT_RECEIVED',
+  'COD_DEPOSIT_RECORDED',
+  'PAYOUT_RECORDED',
 ] as const;
 
 export type AuditLogAction = (typeof AUDIT_LOG_ACTIONS)[number];
@@ -337,10 +418,103 @@ export interface RealtimeNotification {
     | 'parcel.assigned'
     | 'parcel.unassigned'
     | 'parcel.blocked'
-    | 'parcel.unblocked';
+    | 'parcel.unblocked'
+    | 'parcel.updated'
+    | 'parcel.rescheduled';
   title: string;
   message: string;
   trackingId: string;
   status: ParcelStatus;
+  createdAt: string;
+}
+
+/* ------------------------------------------------------------ Bulk booking */
+
+export interface BulkBookingResult {
+  created: number;
+  failed: number;
+  /** One per row, by CSV line (the header is line 1). */
+  results: { line: number; trackingId?: string; error?: string }[];
+}
+
+/** The 400 body when rows fail validation: nothing was booked. */
+export interface BulkBookingRowError {
+  line: number;
+  errors: string[];
+}
+
+/* ------------------------------------------------------------------ Ledger */
+
+/**
+ * MERCHANT: a sender. Positive balance = owed to them, negative = they owe.
+ * COURIER: positive balance = cash they collected and have not handed in.
+ */
+export type LedgerAccountType = 'MERCHANT' | 'COURIER';
+
+export type LedgerEntryType =
+  | 'DELIVERY_FEE'
+  | 'FEE_ADJUSTMENT'
+  | 'FEE_REVERSAL'
+  | 'COD_FEE_REVERSAL'
+  | 'RETURN_FEE'
+  | 'COD_CREDIT'
+  | 'FEE_PAYMENT'
+  | 'PAYOUT'
+  | 'COD_COLLECTED'
+  | 'COD_DEPOSIT';
+
+export type PayoutMethod = 'BANK' | 'BKASH' | 'NAGAD' | 'CASH';
+
+export interface LedgerEntry {
+  id: string;
+  type: LedgerEntryType;
+  /** Signed BDT: positive adds to the balance. */
+  amount: number;
+  trackingId: string | null;
+  note: string | null;
+  reference: string | null;
+  createdAt: string;
+}
+
+export interface LedgerStatement {
+  accountType: LedgerAccountType;
+  userId: string;
+  name: string;
+  balance: number;
+  entries: Paginated<LedgerEntry>;
+}
+
+export interface LedgerBalance {
+  userId: string;
+  name: string;
+  email: string;
+  balance: number;
+  entries: number;
+}
+
+/* ---------------------------------------------------------------- Payments */
+
+export type PaymentState = 'INITIATED' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REVIEW';
+
+export interface CheckoutSession {
+  paymentId: string;
+  tranId: string;
+  amount: number;
+  currency: string;
+  /** Send the browser here; the gateway returns it to /payments/result. */
+  gatewayUrl: string;
+}
+
+export interface Payment {
+  id: string;
+  provider: 'SSLCOMMERZ';
+  tranId: string;
+  amount: number;
+  currency: string;
+  status: PaymentState;
+  cardType: string | null;
+  bankTranId: string | null;
+  failureReason: string | null;
+  paidAt: string | null;
   createdAt: string;
 }

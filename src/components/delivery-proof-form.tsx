@@ -13,6 +13,10 @@ const MAX_IMAGES = 5;
  * Completes a delivery: submitting moves the parcel to DELIVERED and stamps
  * `deliveredAt`. A parcel carrying COD is refused unless the cash is marked
  * collected, so that box is forced on when `codAmount > 0`.
+ *
+ * The receiver was emailed a six-digit code when the parcel went out. Sent,
+ * it is always checked (five wrong tries and the receiver needs a new one);
+ * the server can be set to refuse a courier who sends none.
  */
 export function DeliveryProofForm({
   parcel,
@@ -28,6 +32,7 @@ export function DeliveryProofForm({
   const [receivedBy, setReceivedBy] = useState('');
   const [note, setNote] = useState('');
   const [codCollected, setCodCollected] = useState(!hasCod);
+  const [deliveryCode, setDeliveryCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -38,6 +43,10 @@ export function DeliveryProofForm({
     setError('');
     if (urls.length === 0) {
       setError('At least one proof image is required');
+      return;
+    }
+    if (deliveryCode && !/^\d{6}$/.test(deliveryCode)) {
+      setError('The delivery code is six digits');
       return;
     }
     if (hasCod && !codCollected) {
@@ -51,6 +60,7 @@ export function DeliveryProofForm({
         receivedBy: receivedBy.trim() || undefined,
         note: note.trim() || undefined,
         codCollected,
+        deliveryCode: deliveryCode || undefined,
       });
       toast.success(`${parcel.trackingId} delivered`);
       onDone();
@@ -96,6 +106,25 @@ export function DeliveryProofForm({
             Add another image
           </Button>
         )}
+      </div>
+
+      <div>
+        <label className="block text-[10px] font-bold tracking-wider text-ink-3 mb-1.5 uppercase" htmlFor={`code-${parcel.id}`}>
+          Delivery code from the receiver
+        </label>
+        <input
+          id={`code-${parcel.id}`}
+          className="w-40 h-9 rounded-md border border-surface-3 bg-white px-3 text-center font-mono text-[15px] tracking-[0.3em] text-ink focus:border-accent focus:ring-1 focus:ring-accent/30 outline-none placeholder:text-ink-3 placeholder:tracking-normal placeholder:font-sans placeholder:text-[12px]"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          value={deliveryCode}
+          onChange={(e) => setDeliveryCode(e.target.value.replace(/\D/g, ''))}
+          placeholder="6 digits"
+        />
+        <p className="mt-1 text-[11px] text-ink-3">
+          Ask for it once the parcel is in their hands. They can request a new one from their dashboard.
+        </p>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">

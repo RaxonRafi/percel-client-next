@@ -29,8 +29,11 @@ const STATUS_COLORS: Record<ParcelStatus, string> = {
   PICKED_UP: 'var(--st-picked)',
   IN_TRANSIT: 'var(--st-transit)',
   OUT_FOR_DELIVERY: 'var(--st-out)',
+  FAILED_ATTEMPT: 'var(--st-failed)',
+  RETURNING: 'var(--st-returning)',
   DELIVERED: 'var(--st-delivered)',
   CANCELLED: 'var(--st-cancelled)',
+  RETURNED_TO_SENDER: 'var(--st-returned)',
 };
 
 const STATUS_ICONS: Record<ParcelStatus, string> = {
@@ -38,8 +41,11 @@ const STATUS_ICONS: Record<ParcelStatus, string> = {
   PICKED_UP: 'i-box',
   IN_TRANSIT: 'i-box',
   OUT_FOR_DELIVERY: 'i-truck',
+  FAILED_ATTEMPT: 'i-alert',
+  RETURNING: 'i-repeat',
   DELIVERED: 'i-check',
   CANCELLED: 'i-ban',
+  RETURNED_TO_SENDER: 'i-back',
 };
 
 /** Statuses a parcel moves through, for the banner's progress bar. */

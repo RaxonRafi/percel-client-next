@@ -69,7 +69,7 @@ export default function AnalyticsPage() {
           {/* Top KPI Cards */}
           <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
             <KpiCard title={`Revenue · ${trends.rangeDays}d`} value={formatMoney(trends.revenue.deliveryFeesDelivered)} icon={DollarSign} trend="+12.5%" tone="green" />
-            <KpiCard title="Active Parcels" value={stats.totalParcels - (stats.parcelsByStatus.DELIVERED ?? 0) - (stats.parcelsByStatus.CANCELLED ?? 0)} icon={Package} tone="orange" />
+            <KpiCard title="Active Parcels" value={stats.totalParcels - (stats.parcelsByStatus.DELIVERED ?? 0) - (stats.parcelsByStatus.CANCELLED ?? 0) - (stats.parcelsByStatus.RETURNED_TO_SENDER ?? 0)} icon={Package} tone="orange" />
             <KpiCard title="Avg Delivery Time" value={trends.averageFulfilmentHours ? `${Math.round(trends.averageFulfilmentHours)}h` : 'N/A'} icon={Clock} tone="blue" />
             <KpiCard title="Active Couriers" value={trends.courierThroughput.filter(c => c.active > 0).length} icon={Truck} tone="amber" />
           </div>
