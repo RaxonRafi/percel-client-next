@@ -401,9 +401,30 @@ export default function ParcelsPage() {
                                       Record delivery proof
                                     </Button>
                                   )}
+                                  {canRecordFailure(p.status) && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      disabled={busy || p.isBlocked}
+                                      onClick={() => setFailureFor(failureFor === p.id ? null : p.id)}
+                                    >
+                                      Record failed attempt
+                                    </Button>
+                                  )}
                                 </div>
                               )}
-                              
+
+                              {failureFor === p.id && (
+                                <FailedAttemptForm
+                                  parcel={p}
+                                  onCancel={() => setFailureFor(null)}
+                                  onDone={async () => {
+                                    setFailureFor(null);
+                                    await load();
+                                  }}
+                                />
+                              )}
+
                               {proofFor?.id === p.id && (
                                 <DeliveryProofForm
                                   parcel={p}
@@ -431,14 +452,12 @@ export default function ParcelsPage() {
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex flex-col items-start gap-1">
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                              p.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                              ['PENDING', 'ACCEPTED'].includes(p.status) ? 'bg-surface-2 text-ink-2 border-surface-3' :
-                              p.status === 'CANCELLED' ? 'bg-rose-50 text-rose-600 border-rose-200' :
-                              'bg-accent-bg text-accent border-accent/20'
-                            }`}>
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border ${statusTone(p.status)}`}>
                               {formatStatus(p.status)}
                             </span>
+                            {p.serviceTier === 'EXPRESS' && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">Express</span>
+                            )}
                             {p.isBlocked && (
                               <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-600 border border-rose-200">On hold</span>
                             )}
@@ -457,7 +476,12 @@ export default function ParcelsPage() {
                         
                         <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex flex-col items-end gap-2">
-                            {/* Whoever booked it may cancel while it is PENDING. After pickup only an admin can, through the status route. */}
+                            {/* Whoever booked it may edit or cancel while it is PENDING. After pickup only an admin can cancel, through the status route. */}
+                            {(user?.role === 'SENDER' || user?.role === 'ADMIN') && (p.sender?.id === user.id || user.role === 'ADMIN') && p.status === 'PENDING' && !p.isBlocked && (
+                              <Button size="sm" variant="secondary" disabled={busy} onClick={() => setEditing(p)}>
+                                <Pencil className="h-3.5 w-3.5" /> Edit
+                              </Button>
+                            )}
                             {(user?.role === 'SENDER' || user?.role === 'ADMIN') && p.sender?.id === user.id && p.status === 'PENDING' && !p.isBlocked && (
                               <Button
                                 size="sm"
@@ -467,6 +491,36 @@ export default function ParcelsPage() {
                                 onClick={() => run(() => api.cancelParcel(p.trackingId), 'Parcel cancelled')}
                               >
                                 Cancel
+                              </Button>
+                            )}
+                            {/* A prepaid fee can be paid online; COD fees come out of the cash. */}
+                            {p.sender?.id === user?.id && p.paymentStatus === 'UNPAID' && !isTerminal(p.status) && (
+                              <Button size="sm" disabled={busy} onClick={() => payOnline(p)}>
+                                <CreditCard className="h-3.5 w-3.5" /> Pay {formatMoney(p.deliveryFee)}
+                              </Button>
+                            )}
+                            {p.status === 'FAILED_ATTEMPT' && (addressedToMe || p.sender?.id === user?.id) && !p.isBlocked && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                disabled={busy}
+                                onClick={() => {
+                                  setRescheduling(p);
+                                  setRescheduleAt('');
+                                }}
+                              >
+                                <CalendarClock className="h-3.5 w-3.5" /> Pick a delivery day
+                              </Button>
+                            )}
+                            {addressedToMe && p.status === 'OUT_FOR_DELIVERY' && !p.isBlocked && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busy}
+                                title="Emails you a new code to give the courier"
+                                onClick={() => run(() => api.resendDeliveryCode(p.trackingId), 'A new delivery code is on its way to your email')}
+                              >
+                                <KeyRound className="h-3.5 w-3.5" /> Resend delivery code
                               </Button>
                             )}
                             {addressedToMe && allowedTransitions(p.status).includes('DELIVERED') && (
@@ -517,6 +571,49 @@ export default function ParcelsPage() {
               />
             </div>
           </div>
+
+      {editing && (
+        <ParcelEditDialog
+          parcel={editing}
+          onClose={() => setEditing(null)}
+          onSaved={async () => {
+            setEditing(null);
+            await load();
+          }}
+        />
+      )}
+
+      <Dialog open={!!rescheduling} onOpenChange={(open) => !open && setRescheduling(null)}>
+        {rescheduling && (
+          <DialogContent
+            title="Pick a delivery day"
+            description={`${rescheduling.trackingId} — the courier will try again then. Up to 14 days ahead.`}
+          >
+            <form
+              className="space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const at = fromLocalInput(rescheduleAt);
+                if (!at) return;
+                await run(() => api.rescheduleDelivery(rescheduling.trackingId, at), 'Delivery rescheduled');
+                setRescheduling(null);
+              }}
+            >
+              <input
+                type="datetime-local"
+                className={`${modalField} w-full`}
+                value={rescheduleAt}
+                onChange={(e) => setRescheduleAt(e.target.value)}
+                required
+              />
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="secondary" onClick={() => setRescheduling(null)}>Cancel</Button>
+                <Button type="submit" disabled={busy || !rescheduleAt}>Reschedule</Button>
+              </div>
+            </form>
+          </DialogContent>
+        )}
+      </Dialog>
 
       <Dialog open={!!managed} onOpenChange={(open) => !open && setManageId(null)}>
         {managed && managedDraft && (
